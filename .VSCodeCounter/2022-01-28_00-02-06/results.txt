@@ -1,0 +1,48 @@
+Date : 2022-01-28 00:02:06
+Directory : c:\react_native\login_server
+Total : 17 files,  8222 codes, 377 comments, 223 blanks, all 8822 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| JavaScript         |         14 |      8,181 |        377 |        212 |      8,770 |
+| JSON               |          1 |         24 |          0 |          1 |         25 |
+| Markdown           |          1 |          9 |          0 |          9 |         18 |
+| JSON with Comments |          1 |          8 |          0 |          1 |          9 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                   |         17 |      8,222 |        377 |        223 |      8,822 |
+| .expo                                               |          2 |         17 |          0 |         10 |         27 |
+| api                                                 |          3 |      6,314 |        307 |        137 |      6,758 |
+| config                                              |          1 |         11 |          1 |          1 |         13 |
+| models                                              |          7 |        138 |          0 |         21 |        159 |
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                            | language           | code       | comment    | blank      | total      |
++-----------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\react_native\login_server\.expo\README.md        | Markdown           |          9 |          0 |          9 |         18 |
+| c:\react_native\login_server\.expo\settings.json    | JSON with Comments |          8 |          0 |          1 |          9 |
+| c:\react_native\login_server\api\Conversations.js   | JavaScript         |        976 |         37 |         34 |      1,047 |
+| c:\react_native\login_server\api\Messages.js        | JavaScript         |        289 |          8 |          6 |        303 |
+| c:\react_native\login_server\api\User.js            | JavaScript         |      5,049 |        262 |         97 |      5,408 |
+| c:\react_native\login_server\config\db.js           | JavaScript         |         11 |          1 |          1 |         13 |
+| c:\react_native\login_server\models\Category.js     | JavaScript         |         17 |          0 |          3 |         20 |
+| c:\react_native\login_server\models\Conversation.js | JavaScript         |         22 |          0 |          3 |         25 |
+| c:\react_native\login_server\models\ImagePost.js    | JavaScript         |         14 |          0 |          3 |         17 |
+| c:\react_native\login_server\models\Message.js      | JavaScript         |         15 |          0 |          3 |         18 |
+| c:\react_native\login_server\models\Poll.js         | JavaScript         |         32 |          0 |          3 |         35 |
+| c:\react_native\login_server\models\Thread.js       | JavaScript         |         21 |          0 |          3 |         24 |
+| c:\react_native\login_server\models\User.js         | JavaScript         |         17 |          0 |          3 |         20 |
+| c:\react_native\login_server\package.json           | JSON               |         24 |          0 |          1 |         25 |
+| c:\react_native\login_server\s3.js                  | JavaScript         |         33 |          2 |          6 |         41 |
+| c:\react_native\login_server\server.js              | JavaScript         |      1,587 |         67 |         38 |      1,692 |
+| c:\react_native\login_server\socketHandler.js       | JavaScript         |         98 |          0 |          9 |        107 |
+| Total                                               |                    |      8,222 |        377 |        223 |      8,822 |
++-----------------------------------------------------+--------------------+------------+------------+------------+------------+

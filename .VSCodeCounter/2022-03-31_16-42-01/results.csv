@@ -1,0 +1,21 @@
+"filename", "language", "JSON", "JavaScript", "Markdown", "JSON with Comments", "comment", "blank", "total"
+"c:\react_native\login_server\.expo\README.md", "Markdown", 0, 0, 9, 0, 0, 9, 18
+"c:\react_native\login_server\.expo\settings.json", "JSON with Comments", 0, 0, 0, 8, 0, 1, 9
+"c:\react_native\login_server\api\Conversations.js", "JavaScript", 0, 1339, 0, 0, 44, 39, 1422
+"c:\react_native\login_server\api\Feed.js", "JavaScript", 0, 1542, 0, 0, 114, 18, 1674
+"c:\react_native\login_server\api\Messages.js", "JavaScript", 0, 439, 0, 0, 11, 8, 458
+"c:\react_native\login_server\api\PublicApis.js", "JavaScript", 0, 321, 0, 0, 25, 13, 359
+"c:\react_native\login_server\api\User.js", "JavaScript", 0, 5297, 0, 0, 275, 100, 5672
+"c:\react_native\login_server\config\db.js", "JavaScript", 0, 11, 0, 0, 1, 1, 13
+"c:\react_native\login_server\models\Category.js", "JavaScript", 0, 19, 0, 0, 0, 3, 22
+"c:\react_native\login_server\models\Conversation.js", "JavaScript", 0, 22, 0, 0, 0, 3, 25
+"c:\react_native\login_server\models\ImagePost.js", "JavaScript", 0, 16, 0, 0, 0, 3, 19
+"c:\react_native\login_server\models\Message.js", "JavaScript", 0, 16, 0, 0, 0, 3, 19
+"c:\react_native\login_server\models\Poll.js", "JavaScript", 0, 34, 0, 0, 0, 3, 37
+"c:\react_native\login_server\models\Thread.js", "JavaScript", 0, 23, 0, 0, 0, 3, 26
+"c:\react_native\login_server\models\User.js", "JavaScript", 0, 18, 0, 0, 0, 3, 21
+"c:\react_native\login_server\package.json", "JSON", 26, 0, 0, 0, 0, 1, 27
+"c:\react_native\login_server\s3.js", "JavaScript", 0, 33, 0, 0, 2, 6, 41
+"c:\react_native\login_server\server.js", "JavaScript", 0, 2330, 0, 0, 65, 48, 2443
+"c:\react_native\login_server\socketHandler.js", "JavaScript", 0, 158, 0, 0, 3, 13, 174
+"Total", "-", 26, 11618, 9, 8, 540, 278, 12479
