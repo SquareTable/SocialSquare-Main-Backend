@@ -5776,4 +5776,54 @@ router.get('/reloadUsersDetails/:usersPubId/:userSearchingPubId', (req, res) => 
     })
 })
 
+router.post('/earnSpecialBadge', (req, res) => {
+    let {userId, badgeEarnt} = req.body;
+    
+    //Check if an actual special badge was passed
+    if (badgeEarnt == "homeScreenLogoPressEasterEgg") { // Will add more badges here when we make more
+        User.find({_id: userId}).then(userFound => {
+            if (userFound.length) {
+                //User found
+                if (userFound[0].badges.includes(badgeEarnt)) {
+                    //Badge already earnt
+                    res.json({
+                        status: "FAILED",
+                        message: "Badge already earnt."
+                    })
+                } else {
+                    //Badge not earnt
+                    User.findOneAndUpdate({_id: userId}, { $push : {badges: badgeEarnt}}).then(function() {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Badge earnt."
+                        })
+                    }).catch(err => {
+                        console.log(`Error updating ${err}`)
+                        res.json({
+                            status: "FAILED",
+                            message: "Error while updating user data."
+                        })
+                    })
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "Couldn't find user."
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            res.json({
+                status: "FAILED",
+                message: "Error finding user."
+            })
+        })
+    } else {
+        res.json({
+            status: "FAILED",
+            message: "Wrong badge was given."
+        })
+    }
+})
+
 module.exports = router;
