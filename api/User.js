@@ -208,18 +208,31 @@ router.post('/sendnotificationkey', (req, res) => {
     //main
     User.find({_id: idSent}).then(userData => {
         if (userData.length) {
-            User.findOneAndUpdate({_id: idSent}, {$push : {notificationKeys: keySent}}).then(function() {
-                res.json({
-                    status: "SUCCESS",
-                    message: "Notification Key Saved."
-                })
-            }).catch(err => {
-                console.log(err)
+            const notificationKeys = userData[0].notificationKeys;
+            if (notificationKeys.includes(keySent)) {
                 res.json({
                     status: "FAILED",
-                    message: "Error saving notification key."
+                    message: "Notification key already exists in account data"
                 })
-            })
+            } else if (keySent == null) {
+                res.json({
+                    status: "FAILED",
+                    message: "Notification key cannot be null"
+                })
+            } else {
+                User.findOneAndUpdate({_id: idSent}, {$push : {notificationKeys: keySent}}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Notification Key Saved."
+                    })
+                }).catch(err => {
+                    console.log(err)
+                    res.json({
+                        status: "FAILED",
+                        message: "Error saving notification key."
+                    })
+                })
+            }
         } else {
             res.json({
                 status: "FAILED",
@@ -380,6 +393,100 @@ router.post('/changeemail', (req, res) => {
     }
 })
 
+//ChangePassword
+router.post('/changepassword', (req, res) => {
+    let {currentPassword, newPassword, confirmNewPassword, userId} = req.body;
+    currentPassword = currentPassword.trim()
+    newPassword = newPassword.trim()
+    confirmNewPassword = confirmNewPassword.trim()
+
+    if (currentPassword == "" || newPassword == "" || confirmNewPassword == "") {
+        res.json({
+            status: "FAILED",
+            message: "Empty credentials supplied!"
+        })
+    } else {
+        //Check if the user exists
+        User.find({_id: userId})
+        .then((data) => {
+            if (data.length) {
+                //User Exists
+                const hashedPassword = data[0].password;
+                bcrypt.compare(currentPassword, hashedPassword).then((result) => {
+                    if (result) {
+                        //Password match
+                        if (newPassword === confirmNewPassword) {
+                            //Password and Confirm Password are the same\
+                            if (newPassword.length < 8) {
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Your password must be longer than 8 characters"
+                                })
+                            } else {
+                                //Password is suitable to be changed
+                                // password handling
+                                const saltRounds = 10;
+                                bcrypt.hash(newPassword, saltRounds).then((hashedPassword) => {
+                                    User.findOneAndUpdate({_id: userId}, {password: hashedPassword}).then(function(){
+                                        //Everything worked
+                                        console.log('Changing user password was a success!')
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Changing password was a success!"
+                                        })
+                                    }).catch((error) => {
+                                        console.log('Error while updating user')
+                                        console.log(error)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error occured while updating user"
+                                        })
+                                    })
+                                }).catch((error) => {
+                                    console.log('Error hashing password')
+                                    console.log(error)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error occured while hashing password"
+                                    })
+                                })
+                            }
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Passwords do not match"
+                            })
+                        }
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "Invalid password entered!"
+                        })
+                    }
+                }).catch((error) => {
+                    console.log('Error occured while comparing passwords')
+                    console.log(error)
+                    res.json({
+                        status: "FAILED",
+                        message: "Error occured while comparing passwords"
+                    })
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "Cannot find user with User ID"
+                })
+            }
+        }).catch((error) => {
+            console.log(error)
+            res.json({
+                status: "FAILED",
+                message: "Error occured while finding user with user ID"
+            })
+        })
+    }
+})
+
 //ChangeUsername
 router.post('/changeusername', (req, res) => {
     let {password, userEmail, desiredUsername} = req.body;
@@ -483,7 +590,7 @@ router.get('/searchpageusersearch/:val', (req, res) => {
                 if (data.length) {
                     var itemsProcessed = 0;
                     data.forEach(function (item, index) {
-                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].name, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges})
+                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].displayName, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges})
                         itemsProcessed++;
                         if(itemsProcessed === data.length) {
                             console.log("Before Function")
