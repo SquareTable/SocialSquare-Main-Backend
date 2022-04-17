@@ -5826,4 +5826,27 @@ router.post('/earnSpecialBadge', (req, res) => {
     }
 })
 
+router.post('/checkusernameavailability', (req, res) => {
+    let {username} = req.body;
+    User.find({name: username}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Username is not available"
+            })
+        } else {
+            res.json({
+                status: "SUCCESS",
+                message: "Username is available"
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user."
+        })
+    })
+})
+
 module.exports = router;
