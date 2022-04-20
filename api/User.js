@@ -41,6 +41,28 @@ const Thread = require('./../models/Thread')
 // Password handler
 const bcrypt = require('bcrypt');
 
+// Memory cache for account verification codes
+const NodeCache = require( "node-cache" );
+const AccountVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
+
+// Use axios to make HTTP GET requests to random.org to get random base-16 strings for account verification codes
+const axios = require('axios')
+
+// Use .env file for email configuration
+require('dotenv').config();
+
+// Use nodemailer for sending emails to users
+const nodemailer = require("nodemailer");
+let mailTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_SERVER,
+    port: process.env.SMTP_PORT,
+    secure: false, // IN THE FUTURE MAKE THIS TRUE --- true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+});
+
 //Signup
 router.post('/signup', (req, res) => {
     let {name, displayName, email, badges, password} = req.body;
@@ -5861,6 +5883,270 @@ router.post('/checkusernameavailability', (req, res) => {
             res.json({
                 status: "FAILED",
                 message: "Error finding user."
+            })
+        })
+    }
+})
+
+router.post('/forgottenpasswordaccountusername', (req, res) => {
+    let {username} = req.body;
+    username = username.toLowerCase().trim();
+    User.find({name: username}).then(userFound => {
+        if (userFound.length) {
+            // User exists
+            // Create a verification key so the user can reset their password
+            axios.get('https://www.random.org/integers/?num=1&min=1&max=1000000000&col=1&base=16&format=plain&rnd=new').then((randomString) => {
+                randomString = randomString.data.trim();
+                if (randomString.length === 8) {
+                    // String can be used for account verification
+                    const userID = userFound[0]._id.toString();
+                    const userEmail = userFound[0].email;
+                    const saltRounds = 10;
+                    bcrypt.hash(randomString, saltRounds).then(hashedRandomString => {
+                        const success = AccountVerificationCodeCache.set(userID, hashedRandomString);
+                        if (success) {
+                            // Modified stack overflow answer from https://stackoverflow.com/users/14547938/daniel
+                            // Answer link: https://stackoverflow.com/questions/64605601/partially-mask-email-address-javascript
+                            // --- Start of blur email code ---
+                            let parts = userEmail.split("@");
+                            let firstPart = parts[0];
+                            let secondPart = parts[1];
+                            let blur = firstPart.split("");
+                            let skip = 2;
+                            for (let i = 0; i < blur.length; i += 1) {
+                                if (skip > 0) {
+                                    skip--;
+                                    continue;
+                                }
+                                if (skip === 0) {
+                                    blur[i] = "*";
+                                    blur[i + 1] = "*";
+                                    skip = 2;
+                                    i++;
+                                }
+                            }
+                            let partsOfSecondPart = secondPart.split(".");
+                            let firstPartOfSecondPart = partsOfSecondPart[0];
+                            let secondPartOfSecondPart = partsOfSecondPart[1];
+                            let blurredSecondPart = firstPartOfSecondPart.split("");
+                            for (let i = 0; i < blurredSecondPart.length; i += 1) {
+                                if (skip > 0) {
+                                    skip--;
+                                    continue;
+                                }
+                                if (skip === 0) {
+                                    blurredSecondPart[i] = "*";
+                                    blurredSecondPart[i + 1] = "*";
+                                    skip = 2;
+                                    i++;
+                                }
+                            }
+                            let blurredMail = `${blur.join("")}@${blurredSecondPart.join("")}.${secondPartOfSecondPart}`;
+                            // --- End of blur email code ---
+                            var emailData = {
+                                from: process.env.SMTP_EMAIL,
+                                to: userEmail,
+                                subject: "Reset password for your SocialSquare account",
+                                text: `Your account requested a password reset. Please enter this code into SocialSquare to reset your password: ${randomString}. If you did not request a password reset, please ignore this email.`,
+                                html: `<p>Your account requested a password reset. Please enter this code into SocialSquare to reset your password: ${randomString}. If you did not request a password reset, please ignore this email.</p>`
+                            };
+                            mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
+                                if(error){
+                                    console.log("Error happened while sending email to user for forgotten password. Username of user was: " + userFound[0].name);
+                                    console.log("Error type:", error.name);
+                                    console.log("SMTP log:", error.data);
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error sending email to reset password."
+                                    })
+                                } else if (response) {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Email sent to reset password.",
+                                        data: blurredMail
+                                    })
+                                } else {
+                                    console.log('Mail send error object: ' + error);
+                                    console.log('Mail send response object: ' + response);
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An unexpected error occured while sending email to reset password."
+                                    })
+                                }
+                            });
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Error while setting verification code."
+                            })
+                        }
+                    }).catch((error) => {
+                        console.log('Error hashing random string: ' + error);
+                        res.json({
+                            status: "FAILED",
+                            message: "Error hashing random string."
+                        })
+                    })
+                } else {
+                    // String can't be used for account verification
+                    console.log('Error happened while generating random string. The random string generated was: ' + randomString);
+                    res.json({
+                        status: "FAILED",
+                        message: "Error occured while generating random string."
+                    })
+                }
+            }).catch((error) => {
+                console.log(error)
+                res.json({
+                    status: "FAILED",
+                    message: "Error generating random number."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "There is no user with this username. Please try again."
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user. Please try again"
+        })
+    })
+})
+
+router.post('/checkverificationcode', (req, res) => {
+    let {username, verificationCode} = req.body;
+    username = username.toLowerCase().trim();
+    User.find({name: username}).then(userFound => {
+        if (userFound.length) {
+            const userID = userFound[0]._id.toString();
+            const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
+            if (hashedVerificationCode == undefined) {
+                res.json({
+                    status: "FAILED",
+                    message: "Verification code has expired. Please create a new code."
+                })
+            } else {
+                bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
+                    if (result) {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Verification code is correct."
+                        })
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "Verification code is incorrect."
+                        })
+                    }
+                }).catch(error => {
+                    console.log(error)
+                    res.json({
+                        status: "FAILED",
+                        message: "Error comparing verification code. Please try again."
+                    })
+                })
+            }
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "There is no user with that username. Please try again."
+            })
+        }
+    }).catch((error) => {
+        console.log(error);
+        res.json({
+            status: "FAILED",
+            message: "Error finding user. Please try again"
+        })
+    })
+})
+
+//ChangePassword
+router.post('/changepasswordwithverificationcode', (req, res) => {
+    let {newPassword, confirmNewPassword, verificationCode, username} = req.body;
+    newPassword = newPassword.trim()
+    confirmNewPassword = confirmNewPassword.trim()
+
+    if (newPassword == "" || confirmNewPassword == "") {
+        res.json({
+            status: "FAILED",
+            message: "Empty credentials supplied!"
+        })
+    } else if (newPassword !== confirmNewPassword) {
+        res.json({
+            status: "FAILED",
+            message: "Passwords do not match!"
+        })
+    } else if (newPassword.length < 8) {
+        res.json({
+            status: "FAILED",
+            message: "Password must be at least 8 characters long!"
+        })
+    } else {
+        User.find({name: username}).then(userFound => {
+            if (userFound.length) {
+                //User exists
+                const userID = userFound[0]._id.toString();
+                const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
+                if (hashedVerificationCode == undefined) {
+                    res.json({
+                        status: "FAILED",
+                        message: "Verification code has expired. Please create a new code."
+                    })
+                } else {
+                    bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
+                        if (result) {
+                            //Verification code is correct
+                            const saltRounds = 10;
+                            bcrypt.hash(newPassword, saltRounds).then(hashedPassword => {
+                                User.findOneAndUpdate({_id: userID}, {password: hashedPassword}).then(result => {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Password changed successfully."
+                                    })
+                                }).catch(error => {
+                                    console.log(error)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error changing password. Please try again."
+                                    })
+                                })
+                            }).catch(error => {
+                                console.log(error)
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Error hashing password. Please try again."
+                                })
+                            })
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Verification code is incorrect."
+                            })
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                        res.json({
+                            status: "FAILED",
+                            message: "Error comparing verification code. Please try again."
+                        })
+                    })
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "There is no user with that username. Please try again."
+                })
+            }
+        }).catch((error) => {
+            console.log(error);
+            res.json({
+                status: "FAILED",
+                message: "Error finding user. Please try again"
             })
         })
     }
