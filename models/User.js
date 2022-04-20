@@ -13,7 +13,7 @@ const UserSchema = new Schema({
     totalLikes: 0,
     status: String,
     profileImageKey: String,
-    notificationKeys: Array
+    notificationKeys: Array,
 });
 
 const User = mongoose.model('User', UserSchema);
