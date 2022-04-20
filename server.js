@@ -30,7 +30,32 @@ const unlinkFile = util.promisify(fs.unlink)
 
 //Image post
 const multer  = require('multer')
-const upload = multer({ dest: 'uploads/' })
+
+const imageStorage = multer.diskStorage({
+    // Destination to store image     
+    destination: 'Storage-Of-Images', 
+      filename: (req, file, cb) => {
+          cb(null, file.fieldname + '_' + Date.now() 
+             + path.extname(file.originalname))
+            // file.fieldname is name of the field (image)
+            // path.extname get the uploaded file extension
+    }
+});
+
+const imageUpload = multer({
+    storage: imageStorage,
+    limits: {
+      fileSize: 104857600 // 1000000 Bytes = 1 MB
+    },
+    fileFilter(req, file, cb) {
+        if (!file.originalname.match(/\.(png|jpg|jpeg)$/)) { 
+            // upload only png and jpg format
+            return cb(new Error('Please upload a Image'))
+        }
+        cb(undefined, true)
+    }
+}) 
+const path = require('path');
 
 const { uploadFile, getFileStream } = require('./s3')
 const { addSocketToClients, getSocketToSendMessageTo, getSocketToDisconnect, clientConnectedToConversation, removeSocketDueToDisconnect, removeSocketFromClients, checkIfDeviceUUIDConnected } = require('./socketHandler')
@@ -1978,7 +2003,7 @@ app.post("/transferOwnerShip", (req, res) => {
 })
 
 //Post Profile Image
-app.post('/postGroupIcon', upload.single('image'), async (req, res) => {
+app.post('/postGroupIcon', imageUpload.single('image'), async (req, res) => {
     let {userId, conversationId} = req.body;
     const file = req.file;
     //check if user exists
@@ -2441,3 +2466,26 @@ app.get('/getOnlineUsersInConversation/:idSent/:conversationId', (req, res) => {
         })
     })
 })
+
+app.post("/testingSavingImageToServer", imageUpload.single('image'), (req, res) => {
+    //const tempPath = req.file.path;
+    //var uuidForName = uuidv4(); 
+    //const targetPath = path.join("D:/Social-Square/Social-Square-Images/", `${uuidForName}${path.extname(req.file.originalname).toLowerCase()}`);
+        res.send(req.file)
+    }, (error, req, res, next) => {
+        res.status(400).send({ error: error.message })
+})
+
+app.get("/imageOnServerTest/:imageKey", (req, res) => {
+    var imageKey = req.params.imageKey
+    try {
+        res.sendFile(path.join(__dirname, `./uploads/${imageKey}.png`));
+    } catch (err) {
+        console.log("Error getting image from on server.")
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "Error getting image from server."
+        })
+    }
+  });
