@@ -5850,26 +5850,42 @@ router.post('/earnSpecialBadge', (req, res) => {
 
 router.post('/checkusernameavailability', (req, res) => {
     let {username} = req.body;
-    username = username.toLowerCase();
-    User.find({name: username}).then(userFound => {
-        if (userFound.length) {
-            res.json({
-                status: "SUCCESS",
-                message: "Username is not available"
-            })
-        } else {
-            res.json({
-                status: "SUCCESS",
-                message: "Username is available"
-            })
-        }
-    }).catch(err => {
-        console.log(err)
+    if (username == null) {
         res.json({
             status: "FAILED",
-            message: "Error finding user."
+            message: "Username has not been provided"
         })
-    })
+    } else if (username.length < 1) {
+        res.json({
+            status: "FAILED",
+            message: "Username cannot be blank"
+        })
+    } else if (!username) {
+        res.json({
+            status: "FAILED",
+            message: "Error getting username"
+        })
+    } else {
+        User.find({name: username}).then(userFound => {
+            if (userFound.length) {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Username is not available"
+                })
+            } else {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Username is available"
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            res.json({
+                status: "FAILED",
+                message: "Error finding user."
+            })
+        })
+    }
 })
 
 router.post('/forgottenpasswordaccountusername', (req, res) => {
