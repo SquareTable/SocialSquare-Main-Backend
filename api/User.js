@@ -77,7 +77,7 @@ router.post('/signup', (req, res) => {
             status: "FAILED",
             message: "Empty input fields!"
         });
-    } else if (!/^[a-zA-Z ]*$/.test(name)) {
+    } else if (!/^[a-zA-Z0-9]*$/.test(name)) {
         res.json({
             status: "FAILED",
             message: "Invalid name entered"
@@ -91,6 +91,16 @@ router.post('/signup', (req, res) => {
         res.json({
             status: "FAILED",
             message: "Password is too short!"
+        })
+    } else if (name.length > 20) {
+        res.json({
+            status: "FAILED",
+            message: "Username is too long! Please keep your username under 20 characters."
+        })
+    } else if (displayName.length > 20) {
+        res.json({
+            status: "FAILED",
+            message: "Display name is too long! Please keep your display name under 20 characters."
         })
     } else {
         // Checking if user already exists
@@ -272,66 +282,43 @@ router.post('/sendnotificationkey', (req, res) => {
 
 //ChangeDisplayName
 router.post('/changedisplayname', (req, res) => {
-    let {password, userEmail, desiredDisplayName} = req.body;
-    password = password.trim();
+    let {desiredDisplayName, userID} = req.body;
     desiredDisplayName = desiredDisplayName.trim();
-    const email = userEmail
 
-    if (password == "" || userEmail == "" || desiredDisplayName == "") {
+    if (!desiredDisplayName) {
         res.json({
             status: "FAILED",
-            message: "Empty credentials supplied!"
+            message: "Empty display name supplied!"
         });
     } else {
         // Check if user exist
-        User.find({ email: email })
+        User.find({ _id: userID })
         .then((data) => {
             if (data.length) {
                 //User Exists
-
-                const hashedPassword = data[0].password;
-                bcrypt.compare(password, hashedPassword).then((result) => {
-                        if (result) {
-                            // Password match
-                            User.findOneAndUpdate({email: userEmail}, {displayName: desiredDisplayName}).then(function(){
-                                console.log("SUCCESS1")
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Change Display Name Successful",
-                                    data: data
-                                })
-                            })
-                            .catch(err => {
-                                res.json({
-                                    status: "FAILED",
-                                    message: " An error occured while checking for existing user"
-                                })
-                            });
-                        } else {
-                            res.json({
-                                status: "FAILED",
-                                message: "Invalid password entered!"
-                            })
-                        }
+                User.findOneAndUpdate({_id: userID}, {displayName: desiredDisplayName}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Display name changed successfully."
                     })
-                    .catch(err => {
-                        res.json({
-                            status: "FAILED",
-                            message: "An error occured while comparing passwords!"
-                        })
-                    })
-                } else {
+                }).catch(err => {
+                    console.log(err)
                     res.json({
                         status: "FAILED",
-                        message: "Invalid credentials entered!"
+                        message: "Error updating display name."
                     })
-                }
-            })
-            .catch(err => {
+                })
+            } else {
                 res.json({
                     status: "FAILED",
-                    message: " An error occured while checking for existing user"
+                    message: "User not found!"
                 })
+            }
+        }).catch(err => {
+            res.json({
+                status: "FAILED",
+                message: " An error occured while checking for existing user"
+            })
         })
     }
 })
@@ -511,20 +498,18 @@ router.post('/changepassword', (req, res) => {
 
 //ChangeUsername
 router.post('/changeusername', (req, res) => {
-    let {password, userEmail, desiredUsername} = req.body;
-    password = password.trim();
+    let {desiredUsername, userID} = req.body;
     desiredUsername = desiredUsername.trim();
-    const email = userEmail
     const name = desiredUsername
 
-    if (password == "" || userEmail == "" || desiredUsername == "") {
+    if (desiredUsername == "") {
         res.json({
             status: "FAILED",
-            message: "Empty credentials supplied!"
+            message: "Username was not supplied!"
         });
     } else {
         // Check if user exist
-        User.find({email})
+        User.find({_id: userID})
         .then((data) => {
             if (data.length) {
                 //User Exists
@@ -536,44 +521,27 @@ router.post('/changeusername', (req, res) => {
                             message: "User with the provided username already exists"
                         })  
                     } else {
-                        const hashedPassword = data[0].password;
-                        bcrypt.compare(password, hashedPassword).then((result) => {
-                                if (result) {
-                                    // Password match
-                                    User.findOneAndUpdate({email: userEmail}, {name: desiredUsername}).then(function(){
-                                        console.log("SUCCESS1")
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Change Username Successful",
-                                            data: data
-                                        })
-                                    })
-                                    .catch(err => {
-                                        res.json({
-                                            status: "FAILED",
-                                            message: " An error occured while checking for existing user"
-                                        })
-                                    });
-                                } else {
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "Invalid password entered!"
-                                    })
-                                }
+                        User.findOneAndUpdate({_id: userID}, {name: desiredUsername}).then(function(){
+                            console.log("SUCCESS1")
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Change Username Successful"
                             })
-                            .catch(err => {
-                                res.json({
-                                    status: "FAILED",
-                                    message: "An error occured while comparing passwords!"
-                                })
-                            })//end
+                        })
+                        .catch(err => {
+                            console.log(err)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while checking for existing user"
+                            })
+                        });
                     }
                 })
                 
                 } else {
                     res.json({
                         status: "FAILED",
-                        message: "Invalid credentials entered!"
+                        message: "User not found!"
                     })
                 }
             })
@@ -584,6 +552,41 @@ router.post('/changeusername', (req, res) => {
                 })
         })
     }
+})
+
+//Change bio
+router.post('/changebio', (req, res) => {
+    let {bio, userID} = req.body;
+
+    User.find({_id: userID}).then((data) => {
+        if (data.length) {
+            User.findOneAndUpdate({_id: userID}, {bio: bio}).then(function(){
+                res.json({
+                    status: "SUCCESS",
+                    message: "Change Bio Successful"
+                })
+            })
+            .catch(err => {
+                console.log('Error occured while changing user with ID: ' + userID + '... bio. This was the error: ' + err);
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while checking for existing user"
+                })
+            });
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found!"
+            })
+        }
+    })
+    .catch(err => {
+        console.log(err);
+        res.json({
+            status: "FAILED",
+            message: "An error occured while checking for existing user"
+        })
+    })
 })
 
 //search page user
@@ -612,7 +615,7 @@ router.get('/searchpageusersearch/:val', (req, res) => {
                 if (data.length) {
                     var itemsProcessed = 0;
                     data.forEach(function (item, index) {
-                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].displayName, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges})
+                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].displayName, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges, bio: data[index].bio})
                         itemsProcessed++;
                         if(itemsProcessed === data.length) {
                             console.log("Before Function")

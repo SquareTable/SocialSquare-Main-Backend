@@ -14,6 +14,7 @@ const UserSchema = new Schema({
     status: String,
     profileImageKey: String,
     notificationKeys: Array,
+    bio: String
 });
 
 const User = mongoose.model('User', UserSchema);
