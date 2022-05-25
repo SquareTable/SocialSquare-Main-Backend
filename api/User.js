@@ -97,7 +97,7 @@ router.post('/signup', (req, res) => {
             status: "FAILED",
             message: "Empty input fields!"
         });
-    } else if (!/^[a-zA-Z ]*$/.test(name)) {
+    } else if (!/^[a-zA-Z0-9]*$/.test(name)) {
         res.json({
             status: "FAILED",
             message: "Invalid name entered"
@@ -111,6 +111,16 @@ router.post('/signup', (req, res) => {
         res.json({
             status: "FAILED",
             message: "Password is too short!"
+        })
+    } else if (name.length > 20) {
+        res.json({
+            status: "FAILED",
+            message: "Username is too long! Please keep your username under 20 characters."
+        })
+    } else if (displayName.length > 20) {
+        res.json({
+            status: "FAILED",
+            message: "Display name is too long! Please keep your display name under 20 characters."
         })
     } else {
         // Checking if user already exists
