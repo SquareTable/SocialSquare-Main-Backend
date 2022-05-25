@@ -380,7 +380,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user image creator: ${err}`)
+                                                            console.log(`Couldn't find user image creator: ${foundImg[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             var hasViewedLengthAndNotViewedLength = hasViewedPostsWithRequiredFields.length+hasNotViewedPostsWithRequiredFields.length
@@ -400,7 +400,8 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             }
                                                         }
                                                     }).catch(err => {
-                                                        console.log(`Error finding user image creator: ${err}`)
+                                                        console.log(`Error finding user image creator:`)
+                                                        console.log(err)
                                                         forSendBackItemsProcessed++;
                                                         //do like 10 load
                                                         var hasViewedLengthAndNotViewedLength = hasViewedPostsWithRequiredFields.length+hasNotViewedPostsWithRequiredFields.length
@@ -545,7 +546,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user poll creator: ${err}`)
+                                                            console.log(`Couldn't find user poll creator: ${foundPoll[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             var hasViewedLengthAndNotViewedLength = hasViewedPostsWithRequiredFields.length+hasNotViewedPostsWithRequiredFields.length
@@ -787,7 +788,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user thread creator: ${err}`)
+                                                            console.log(`Couldn't find user thread creator: ${foundThread[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             var hasViewedLengthAndNotViewedLength = hasViewedPostsWithRequiredFields.length+hasNotViewedPostsWithRequiredFields.length
@@ -950,7 +951,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user image creator: ${err}`)
+                                                            console.log(`Couldn't find user image creator: ${foundImg[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             if (hasNotViewedPostsWithRequiredFields.length < 10) {
@@ -973,7 +974,8 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             }
                                                         }
                                                     }).catch(err => {
-                                                        console.log(`Error finding user image creator: ${err}`)
+                                                        console.log(`Error finding user image creator:`)
+                                                        console.log(err)
                                                         forSendBackItemsProcessed++;
                                                         //do like 10 load
                                                         if (hasNotViewedPostsWithRequiredFields.length < 10) {
@@ -1130,7 +1132,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user poll creator: ${err}`)
+                                                            console.log(`Couldn't find user poll creator: ${foundPoll[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             if (hasNotViewedPostsWithRequiredFields.length < 10) {
@@ -1389,7 +1391,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 }
                                                             }
                                                         } else {
-                                                            console.log(`Couldn't find user thread creator: ${err}`)
+                                                            console.log(`Couldn't find user thread creator: ${foundThread[0]._id}`)
                                                             forSendBackItemsProcessed++;
                                                             //do like 10 load
                                                             if (hasNotViewedPostsWithRequiredFields.length < 10) {

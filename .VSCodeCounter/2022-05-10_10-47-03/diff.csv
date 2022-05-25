@@ -1,0 +1,44 @@
+"filename", "language", "JavaScript", "JSON with Comments", "JSON", "Markdown", "Docker", "YAML", "Ignore", "comment", "blank", "total"
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\.dockerignore", "Ignore", 0, 0, 0, 0, 0, 0, 1, 0, 0, 1
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\.expo\README.md", "Markdown", 0, 0, 0, 9, 0, 0, 0, 0, 9, 18
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\.expo\settings.json", "JSON with Comments", 0, 8, 0, 0, 0, 0, 0, 0, 1, 9
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\Dockerfile", "Docker", 0, 0, 0, 0, 7, 0, 0, 1, 0, 8
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\README.md", "Markdown", 0, 0, 0, 2, 0, 0, 0, 0, 1, 3
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\api\Conversations.js", "JavaScript", 1339, 0, 0, 0, 0, 0, 0, 44, 39, 1422
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\api\Feed.js", "JavaScript", 1520, 0, 0, 0, 0, 0, 0, 143, 18, 1681
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\api\Messages.js", "JavaScript", 439, 0, 0, 0, 0, 0, 0, 11, 8, 458
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\api\PublicApis.js", "JavaScript", 321, 0, 0, 0, 0, 0, 0, 25, 13, 359
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\api\User.js", "JavaScript", 6272, 0, 0, 0, 0, 0, 0, 326, 134, 6732
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\config\db.js", "JavaScript", 10, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\docker-compose.yml", "YAML", 0, 0, 0, 0, 0, 11, 0, 0, 0, 11
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\Category.js", "JavaScript", 19, 0, 0, 0, 0, 0, 0, 0, 3, 22
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\Conversation.js", "JavaScript", 22, 0, 0, 0, 0, 0, 0, 0, 3, 25
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\ImagePost.js", "JavaScript", 16, 0, 0, 0, 0, 0, 0, 0, 3, 19
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\Message.js", "JavaScript", 16, 0, 0, 0, 0, 0, 0, 0, 3, 19
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\Poll.js", "JavaScript", 34, 0, 0, 0, 0, 0, 0, 0, 3, 37
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\Thread.js", "JavaScript", 23, 0, 0, 0, 0, 0, 0, 0, 3, 26
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\models\User.js", "JavaScript", 22, 0, 0, 0, 0, 0, 0, 0, 3, 25
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\package.json", "JSON", 0, 0, 32, 0, 0, 0, 0, 0, 1, 33
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\s3.js", "JavaScript", 33, 0, 0, 0, 0, 0, 0, 2, 6, 41
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\server.js", "JavaScript", 2293, 0, 0, 0, 0, 0, 0, 65, 52, 2410
+"c:\Users\SSBackend\Documents\GitHub\SocialSquare-Main-Backend\socketHandler.js", "JavaScript", 158, 0, 0, 0, 0, 0, 0, 3, 13, 174
+"c:\react_native\login_server\.expo\README.md", "Markdown", 0, 0, 0, -9, 0, 0, 0, 0, -9, -18
+"c:\react_native\login_server\.expo\settings.json", "JSON with Comments", 0, -8, 0, 0, 0, 0, 0, 0, -1, -9
+"c:\react_native\login_server\api\Conversations.js", "JavaScript", -1339, 0, 0, 0, 0, 0, 0, -44, -39, -1422
+"c:\react_native\login_server\api\Feed.js", "JavaScript", -1542, 0, 0, 0, 0, 0, 0, -114, -18, -1674
+"c:\react_native\login_server\api\Messages.js", "JavaScript", -439, 0, 0, 0, 0, 0, 0, -11, -8, -458
+"c:\react_native\login_server\api\PublicApis.js", "JavaScript", -321, 0, 0, 0, 0, 0, 0, -25, -13, -359
+"c:\react_native\login_server\api\User.js", "JavaScript", -5297, 0, 0, 0, 0, 0, 0, -275, -100, -5672
+"c:\react_native\login_server\config\db.js", "JavaScript", -11, 0, 0, 0, 0, 0, 0, -1, -1, -13
+"c:\react_native\login_server\models\Category.js", "JavaScript", -19, 0, 0, 0, 0, 0, 0, 0, -3, -22
+"c:\react_native\login_server\models\Conversation.js", "JavaScript", -22, 0, 0, 0, 0, 0, 0, 0, -3, -25
+"c:\react_native\login_server\models\ImagePost.js", "JavaScript", -16, 0, 0, 0, 0, 0, 0, 0, -3, -19
+"c:\react_native\login_server\models\Message.js", "JavaScript", -16, 0, 0, 0, 0, 0, 0, 0, -3, -19
+"c:\react_native\login_server\models\Poll.js", "JavaScript", -34, 0, 0, 0, 0, 0, 0, 0, -3, -37
+"c:\react_native\login_server\models\Thread.js", "JavaScript", -23, 0, 0, 0, 0, 0, 0, 0, -3, -26
+"c:\react_native\login_server\models\User.js", "JavaScript", -18, 0, 0, 0, 0, 0, 0, 0, -3, -21
+"c:\react_native\login_server\package.json", "JSON", 0, 0, -26, 0, 0, 0, 0, 0, -1, -27
+"c:\react_native\login_server\s3.js", "JavaScript", -33, 0, 0, 0, 0, 0, 0, -2, -6, -41
+"c:\react_native\login_server\server.js", "JavaScript", -2330, 0, 0, 0, 0, 0, 0, -65, -48, -2443
+"c:\react_native\login_server\socketHandler.js", "JavaScript", -158, 0, 0, 0, 0, 0, 0, -3, -13, -174
+"Total", "-", 919, 0, 6, 2, 7, 11, 1, 80, 39, 1065

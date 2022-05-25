@@ -1,2 +1,11 @@
-volumes:
-      - Storage-Of-Images:"D:/Social-Square/Social-Square-Images"
+version: '3.8'
+services:
+      expressapp:
+            build: .
+            ports:
+                  - "9443:3000"
+            environment:
+                  - UPLOAD_PATH=/Local-Images
+                  - UPLOADED_PATH=/server/Local-Images
+            volumes:
+                  - D:/Social-Square/Social-Square-Images:/server/Local-Images

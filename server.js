@@ -25,42 +25,38 @@ const s3 = new S3 ({
     secretAccessKey
 })
 
+const { v4: uuidv4 } = require('uuid');
+
 const util = require('util')
 const unlinkFile = util.promisify(fs.unlink)
 
 //Image post
 const multer  = require('multer')
+const path = require('path');
+const stream = require('stream')
 
-const imageStorage = multer.diskStorage({
+const DIR = `.${process.env.UPLOAD_PATH}` 
+const storage = multer.diskStorage({
     // Destination to store image     
-    destination: 'Storage-Of-Images', 
-      filename: (req, file, cb) => {
-          cb(null, file.fieldname + '_' + Date.now() 
-             + path.extname(file.originalname))
-            // file.fieldname is name of the field (image)
-            // path.extname get the uploaded file extension
+    destination: (req, file, cb) => {
+        cb(null, DIR)
+    },
+    filename: (req, file, cb) => {
+        let extName = path.extname(file.originalname)
+        if (extName == ".png" || extName == ".jpg" || extName == ".jpeg") {
+            var newUUID = uuidv4(); 
+            cb(null, newUUID + extName); 
+        } else {
+            cb("Invalid file format")
+        }      
     }
 });
 
-const imageUpload = multer({
-    storage: imageStorage,
-    limits: {
-      fileSize: 104857600 // 1000000 Bytes = 1 MB
-    },
-    fileFilter(req, file, cb) {
-        if (!file.originalname.match(/\.(png|jpg|jpeg)$/)) { 
-            // upload only png and jpg format
-            return cb(new Error('Please upload a Image'))
-        }
-        cb(undefined, true)
-    }
-}) 
-const path = require('path');
+const upload = multer({ storage: storage })
+
 
 const { uploadFile, getFileStream } = require('./s3')
 const { addSocketToClients, getSocketToSendMessageTo, getSocketToDisconnect, clientConnectedToConversation, removeSocketDueToDisconnect, removeSocketFromClients, checkIfDeviceUUIDConnected } = require('./socketHandler')
-
-const { v4: uuidv4 } = require('uuid');
 
 var timeOutsOfSocketDisconnects = []
 
@@ -351,6 +347,109 @@ io.on("connection", (socket) => {
             if (userFound.length) {
                 if (uuidOfDevice) {
                     checkIfDeviceUUIDConnected(uuidOfDevice, function(alreadyConnected) {
+                        const afterRemovingAlreadyConnected = () => {
+                            console.log("a user connected")
+                            var tempConversation = ""
+                            addSocketToClients(userFound[0].secondId, tempConversation, socket.id, uuidOfDevice, function(clientSaved) {
+                                console.log(`clientSaved: ${clientSaved}`)
+                                socket.emit("client-connected")
+                            })
+                            // Try the following if doesnt work make it an external function and for the conversation one use a try catch
+                            const createdNewObjectId = new ObjectID(idOnConnection)
+                            console.log(`Created object id based on sent _id ${createdNewObjectId}`)
+                            Conversation.find({members: { $in: [createdNewObjectId]}}).then(conversationsUserIsIn => {
+                                if (conversationsUserIsIn.length) {
+                                    var itemsProcessed = 0
+                                    conversationsUserIsIn.forEach(function (item, index) {
+                                        if (conversationsUserIsIn[index].isDirectMessage == true) {
+                                            var firstMember = conversationsUserIsIn[index].members[0]
+                                            var idOfOther
+                                            if (firstMember.equals(createdNewObjectId)) {
+                                                idOfOther = conversationsUserIsIn[index].members[1]
+                                            } else {
+                                                idOfOther = conversationsUserIsIn[index].members[0]
+                                            }
+                                            console.log(idOfOther)
+                                            User.find({_id: idOfOther}).then(foundOtherUser => {
+                                                if (foundOtherUser.length) {
+                                                    getSocketToSendMessageTo(foundOtherUser[0].secondId, function(socketsToSendTo) {
+                                                        if (socketsToSendTo == null || socketsToSendTo.length == 0) {
+                                                            console.log("Socket returned was empty or something")
+                                                            itemsProcessed++;
+                                                            if (itemsProcessed == conversationsUserIsIn.length) {
+                                                                socket.emit("fully-set-online")
+                                                            }
+                                                        } else {
+                                                            var socketsSentFromList = 0
+                                                            console.log("user-in-conversation-online")
+                                                            socketsToSendTo.forEach(function (item, index) {
+                                                                try {
+                                                                    console.log(`sending socket emit to ${socketsToSendTo[index]}`)
+                                                                    io.to(socketsToSendTo[index]).emit("user-in-conversation-online", userFound[0].secondId)
+                                                                    socketsSentFromList++;
+                                                                    if (socketsSentFromList == socketsToSendTo.length) {
+                                                                        itemsProcessed++;
+                                                                        if (itemsProcessed == conversationsUserIsIn.length) {
+                                                                            socket.emit("fully-set-online")
+                                                                        }
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.log(err);
+                                                                    itemsProcessed++;
+                                                                    if (itemsProcessed == conversationsUserIsIn.length) {
+                                                                        socket.emit("fully-set-online")
+                                                                    }
+                                                                }
+                                                            })
+                                                        }
+                                                    })
+                                                } else {
+                                                    itemsProcessed++;
+                                                    if (itemsProcessed == conversationsUserIsIn.length) {
+                                                        socket.emit("fully-set-online")
+                                                    }
+                                                }
+                                            }).catch(err => {
+                                                console.log(err)
+                                                itemsProcessed++;
+                                                if (itemsProcessed == conversationsUserIsIn.length) {
+                                                    socket.emit("fully-set-online")
+                                                }
+                                            })
+                                        } else {
+                                            try {
+                                                var roomExists = io.sockets.adapter.rooms.get(conversationsUserIsIn[index]._id)
+                                                if (roomExists == null || roomExists == undefined || typeof roomExists == 'undefined') {
+                                                    console.log("Room is empty so didn't send")
+                                                    itemsProcessed++;
+                                                    if (itemsProcessed == conversationsUserIsIn.length) {
+                                                        socket.emit("fully-set-online")
+                                                    }
+                                                } else {
+                                                    socket.to(conversationsUserIsIn[index]._id).emit("user-in-conversation-online", userFound[0].secondId)
+                                                    console.log("user-in-conversation-online")
+                                                    itemsProcessed++;
+                                                    if (itemsProcessed == conversationsUserIsIn.length) {
+                                                        socket.emit("fully-set-online")
+                                                    }
+                                                }
+                                            } catch (err) {
+                                                console.log(err);
+                                                itemsProcessed++;
+                                                if (itemsProcessed == conversationsUserIsIn.length) {
+                                                    socket.emit("fully-set-online")
+                                                }
+                                            }
+                                        }
+                                    })
+                                } else {
+                                    console.log("No conversations to set online for.")
+                                }
+                            }).catch(err => {
+                                console.log(err)
+                                socket.emit("error-setting-online-status")
+                            })
+                        }
                         if (alreadyConnected !== "Not Found") {
                             //Shouldn't need to disconnect it but just incase :)
                             async function forFindingSocketAsync() {
@@ -358,113 +457,16 @@ io.on("connection", (socket) => {
                                     const socketFound = await io.sockets.sockets.get(alreadyConnected)
                                     socketFound.disconnect();
                                     console.log(`${alreadyConnected} Disconnected`)
+                                    afterRemovingAlreadyConnected()
                                 } catch (err) {
                                     console.log("Error disconnecting last socket with this device id should be normal." + err)
+                                    afterRemovingAlreadyConnected()
                                 }
                             }
                             forFindingSocketAsync()
+                        } else {
+                            afterRemovingAlreadyConnected()
                         }
-                        console.log("a user connected")
-                        var tempConversation = ""
-                        addSocketToClients(userFound[0].secondId, tempConversation, socket.id, uuidOfDevice, function(clientSaved) {
-                            console.log(`clientSaved: ${clientSaved}`)
-                            socket.emit("client-connected")
-                        })
-                        // Try the following if doesnt work make it an external function and for the conversation one use a try catch
-                        const createdNewObjectId = new ObjectID(idOnConnection)
-                        console.log(`Created object id based on sent _id ${createdNewObjectId}`)
-                        Conversation.find({members: { $in: [createdNewObjectId]}}).then(conversationsUserIsIn => {
-                            if (conversationsUserIsIn.length) {
-                                var itemsProcessed = 0
-                                conversationsUserIsIn.forEach(function (item, index) {
-                                    if (conversationsUserIsIn[index].isDirectMessage == true) {
-                                        var firstMember = conversationsUserIsIn[index].members[0]
-                                        var idOfOther
-                                        if (firstMember.equals(createdNewObjectId)) {
-                                            idOfOther = conversationsUserIsIn[index].members[1]
-                                        } else {
-                                            idOfOther = conversationsUserIsIn[index].members[0]
-                                        }
-                                        console.log(idOfOther)
-                                        User.find({_id: idOfOther}).then(foundOtherUser => {
-                                            if (foundOtherUser.length) {
-                                                getSocketToSendMessageTo(foundOtherUser[0].secondId, function(socketsToSendTo) {
-                                                    if (socketsToSendTo == null || socketsToSendTo.length == 0) {
-                                                        console.log("Socket returned was empty or something")
-                                                        itemsProcessed++;
-                                                        if (itemsProcessed == conversationsUserIsIn.length) {
-                                                            socket.emit("fully-set-online")
-                                                        }
-                                                    } else {
-                                                        var socketsSentFromList = 0
-                                                        console.log("user-in-conversation-online")
-                                                        socketsToSendTo.forEach(function (item, index) {
-                                                            try {
-                                                                console.log(`sending socket emit to ${socketsToSendTo[index]}`)
-                                                                io.to(socketsToSendTo[index]).emit("user-in-conversation-online", userFound[0].secondId)
-                                                                socketsSentFromList++;
-                                                                if (socketsSentFromList == socketsToSendTo.length) {
-                                                                    itemsProcessed++;
-                                                                    if (itemsProcessed == conversationsUserIsIn.length) {
-                                                                        socket.emit("fully-set-online")
-                                                                    }
-                                                                }
-                                                            } catch (err) {
-                                                                console.log(err);
-                                                                itemsProcessed++;
-                                                                if (itemsProcessed == conversationsUserIsIn.length) {
-                                                                    socket.emit("fully-set-online")
-                                                                }
-                                                            }
-                                                        })
-                                                    }
-                                                })
-                                            } else {
-                                                itemsProcessed++;
-                                                if (itemsProcessed == conversationsUserIsIn.length) {
-                                                    socket.emit("fully-set-online")
-                                                }
-                                            }
-                                        }).catch(err => {
-                                            console.log(err)
-                                            itemsProcessed++;
-                                            if (itemsProcessed == conversationsUserIsIn.length) {
-                                                socket.emit("fully-set-online")
-                                            }
-                                        })
-                                    } else {
-                                        try {
-                                            var roomExists = io.sockets.adapter.rooms.get(conversationsUserIsIn[index]._id)
-                                            if (roomExists == null || roomExists == undefined || typeof roomExists == 'undefined') {
-                                                console.log("Room is empty so didn't send")
-                                                itemsProcessed++;
-                                                if (itemsProcessed == conversationsUserIsIn.length) {
-                                                    socket.emit("fully-set-online")
-                                                }
-                                            } else {
-                                                socket.to(conversationsUserIsIn[index]._id).emit("user-in-conversation-online", userFound[0].secondId)
-                                                console.log("user-in-conversation-online")
-                                                itemsProcessed++;
-                                                if (itemsProcessed == conversationsUserIsIn.length) {
-                                                    socket.emit("fully-set-online")
-                                                }
-                                            }
-                                        } catch (err) {
-                                            console.log(err);
-                                            itemsProcessed++;
-                                            if (itemsProcessed == conversationsUserIsIn.length) {
-                                                socket.emit("fully-set-online")
-                                            }
-                                        }
-                                    }
-                                })
-                            } else {
-                                console.log("No conversations to set online for.")
-                            }
-                        }).catch(err => {
-                            console.log(err)
-                            socket.emit("error-setting-online-status")
-                        })
                         //
                         socket.on("join-conversation", (conversation, pubId) => {
                             User.find({secondId: pubId}).then(result => {
@@ -2003,168 +2005,76 @@ app.post("/transferOwnerShip", (req, res) => {
 })
 
 //Post Profile Image
-app.post('/postGroupIcon', imageUpload.single('image'), async (req, res) => {
-    let {userId, conversationId} = req.body;
-    const file = req.file;
-    //check if user exists
-    User.find({_id: userId}).then(userResult => {
-        if (userResult.length) {
-            Conversation.find({_id: conversationId}).then(convoFound => {
-                if (convoFound.length) {
-                    if (convoFound[0].members.includes(userId)) {
-                        async function asyncCall() {
-                            const result = await uploadFile(file)
-                            await unlinkFile(file.path)
-                            console.log(result)
-                            if (result !== null) {
-                                if (convoFound[0].conversationImageKey !== "") {
-                                    var params = {  Bucket: bucketName, Key: convoFound[0].conversationImageKey };
-                                    s3.deleteObject(params, function(err, data) {
-                                        if (err) {
-                                            console.log("Not Deleted")
-                                            console.log(err, err.stack)
-                                            res.json({
-                                                status: "FAILED",
-                                                message: "Error deleting previous image!"
-                                            })
-                                        } else { 
-                                            console.log("Deleted"); //deleted
-                                            Conversation.findOneAndUpdate({_id: conversationId}, { conversationImageKey: result.Key }).then(function(){
-                                                console.log("SUCCESS1")
-                                                const serverMessagesId = new ObjectID()
-                                                generateTwoDigitDate(function(datetime) {
-                                                    io.sockets.in(conversationId).emit("group-icon-changed", userResult[0].secondId, serverMessagesId, datetime);
-                                                    serverMessage(conversationId, "Group Icon Changed", {userThatChangedIcon: userResult[0].secondId}, serverMessagesId, datetime)
-                                                    res.json({
-                                                        status: "SUCCESS",
-                                                        message: "Group Icon Updated",
-                                                    })
-                                                })
-                                            })
-                                            .catch(err => {
-                                                console.log(err)
-                                                res.json({
-                                                    status: "FAILED",
-                                                    message: "Error updating"
-                                                })
-                                            });
-                                        }
-                                    });
-                                } else {
-                                    Conversation.findOneAndUpdate({_id: conversationId}, { conversationImageKey: result.Key }).then(function(){
-                                        console.log("SUCCESS1")
-                                        const serverMessagesId = new ObjectID()
-                                        generateTwoDigitDate(function(datetime) {
-                                            io.sockets.in(conversationId).emit("group-icon-changed", userResult[0].secondId, serverMessagesId, datetime);
-                                            serverMessage(conversationId, "Group Icon Changed", {userThatChangedIcon: userResult[0].secondId}, serverMessagesId, datetime)
-                                            res.json({
-                                                status: "SUCCESS",
-                                                message: "Group Icon Updated",
-                                            })
-                                        })
+app.post('/postGroupIcon', upload.single('image'), async (req, res) => {
+    if (!req.file) {
+        console.log("No file recieved.")
+        return res.send({
+            status: "FAILED",
+            message: "No file sent."
+        });
+    } else {
+        console.log('File has been recieved: ', req.file.filename)
+        let {userId, conversationId} = req.body;
+        const file = req.file;
+        //check if user exists
+        User.find({_id: userId}).then(userResult => {
+            if (userResult.length) {
+                Conversation.find({_id: conversationId}).then(convoFound => {
+                    if (convoFound.length) {
+                        if (convoFound[0].members.includes(userId)) {
+                            //todo remove if old
+                            Conversation.findOneAndUpdate({_id: conversationId}, { conversationImageKey: req.file.filename }).then(function(){
+                                console.log("SUCCESS1")
+                                const serverMessagesId = new ObjectID()
+                                generateTwoDigitDate(function(datetime) {
+                                    io.sockets.in(conversationId).emit("group-icon-changed", userResult[0].secondId, serverMessagesId, datetime);
+                                    serverMessage(conversationId, "Group Icon Changed", {userThatChangedIcon: userResult[0].secondId}, serverMessagesId, datetime)
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Group Icon Updated",
                                     })
-                                    .catch(err => {
-                                        console.log(err)
-                                        res.json({
-                                            status: "FAILED",
-                                            message: "Error updating"
-                                        })
-                                    });
-                                }
-                            } else {
+                                })
+                            })
+                            .catch(err => {
+                                console.log(err)
                                 res.json({
                                     status: "FAILED",
-                                    message: "An error occurred while uploading image!"
+                                    message: "Error updating"
                                 })
-                            }
+                            });
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "User couldn't be found in conversation."
+                            })
                         }
-                        asyncCall();
                     } else {
                         res.json({
                             status: "FAILED",
-                            message: "User couldn't be found in conversation."
+                            message: "Conversation couldn't be found?"
                         })
                     }
-                } else {
+                }).catch(err => {
+                    console.log(err)
                     res.json({
                         status: "FAILED",
-                        message: "Conversation couldn't be found?"
+                        message: "Error searching for conversation."
                     })
-                }
-            }).catch(err => {
-                console.log(err)
-                res.json({
-                    status: "FAILED",
-                    message: "Error searching for conversation."
                 })
-            })
-        } else {
-            res.json({
-                status: "FAILED",
-                message: "An error occurred while getting user data!"
-            })
-        }
-    })
-    .catch(err => { 
-        console.log(err)
-        res.json({
-            status: "FAILED",
-            message: "Error searching for user"
-        })
-    });
-})
-
-//Get Image
-app.get('/getImage/:key', (req, res) => {
-    console.log("Get image started")
-    let key = req.params.key;
-    if (key == null || key == "" || typeof key === 'undefined' || key == undefined) {
-        res.json({
-            status: "FAILED",
-            message: "Key error",
-        })
-    } else {
-        try {
-            console.log("the key")
-            console.log(key)
-            const readableStream = getFileStream(key)
-            if (readableStream) {
-                var chunks = [];
-                readableStream.on('data', function(chunk) {
-                    chunks.push(chunk);
-                    //console.log('chunk:', chunk.length); removed since floods output
-                });
-                readableStream.on('end', function() {
-                    var result = Buffer.concat(chunks);
-                    console.log('final result:', result.length);
-                    var toSend = result.toString('base64')
-                    //send back
-                    if (toSend) {
-                        res.json({
-                            status: "SUCCESS",
-                            message: "Image Sent",
-                            data: toSend
-                        })
-                    } else {
-                        res.json({
-                            status: "FAILED",
-                            message: "Error occured while checking for image being recieved 1"
-                        })
-                    }
-                });
             } else {
                 res.json({
                     status: "FAILED",
-                    message: "Error occured while checking for image being recieved 2"
+                    message: "An error occurred while getting user data!"
                 })
             }
-        } catch (err) {
+        })
+        .catch(err => { 
             console.log(err)
             res.json({
                 status: "FAILED",
-                message: "Error occured most likely due to the key passed"
+                message: "Error searching for user"
             })
-        }
+        });
     }
 })
 
@@ -2467,19 +2377,28 @@ app.get('/getOnlineUsersInConversation/:idSent/:conversationId', (req, res) => {
     })
 })
 
-app.post("/testingSavingImageToServer", imageUpload.single('image'), (req, res) => {
-    //const tempPath = req.file.path;
-    //var uuidForName = uuidv4(); 
-    //const targetPath = path.join("D:/Social-Square/Social-Square-Images/", `${uuidForName}${path.extname(req.file.originalname).toLowerCase()}`);
-        res.send(req.file)
-    }, (error, req, res, next) => {
-        res.status(400).send({ error: error.message })
-})
-
-app.get("/imageOnServerTest/:imageKey", (req, res) => {
+app.get("/getImageOnServer/:imageKey", (req, res) => {
     var imageKey = req.params.imageKey
     try {
-        res.sendFile(path.join(__dirname, `./uploads/${imageKey}.png`));
+        var filepath = path.resolve(process.env.UPLOADED_PATH, imageKey)
+        //filepath = filepath.replace(/\.[^/.]+$/, ".webp")
+        
+        const readableStream = fs.createReadStream(filepath, {encoding: 'base64'})
+        const passThroughStream = new stream.PassThrough() // For stream error handling
+        stream.pipeline(
+            readableStream,
+            passThroughStream, //For error handling
+            (err) => {
+                if (err) {
+                    console.log(err) // Either no file or error
+                    return res.json({
+                        status: "FAILED",
+                        message: "Error finding image."
+                    }) 
+                }
+            }
+        )
+        passThroughStream.pipe(res)
     } catch (err) {
         console.log("Error getting image from on server.")
         console.log(err)

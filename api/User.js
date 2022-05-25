@@ -25,7 +25,27 @@ const unlinkFile = util.promisify(fs.unlink)
 
 //Image post
 const multer  = require('multer')
-const upload = multer({ dest: 'uploads/' })
+const path = require('path');
+const stream = require('stream')
+
+const DIR = `.${process.env.UPLOAD_PATH}` 
+const storage = multer.diskStorage({
+    // Destination to store image     
+    destination: (req, file, cb) => {
+        cb(null, DIR)
+    },
+    filename: (req, file, cb) => {
+        let extName = path.extname(file.originalname)
+        if (extName == ".png" || extName == ".jpg" || extName == ".jpeg") {
+            var newUUID = uuidv4(); 
+            cb(null, newUUID + extName); 
+        } else {
+            cb("Invalid file format")
+        }      
+    }
+});
+
+const upload = multer({ storage: storage })
 
 const { uploadFile, getFileStream } = require('../s3')
 
@@ -272,66 +292,43 @@ router.post('/sendnotificationkey', (req, res) => {
 
 //ChangeDisplayName
 router.post('/changedisplayname', (req, res) => {
-    let {password, userEmail, desiredDisplayName} = req.body;
-    password = password.trim();
+    let {desiredDisplayName, userID} = req.body;
     desiredDisplayName = desiredDisplayName.trim();
-    const email = userEmail
 
-    if (password == "" || userEmail == "" || desiredDisplayName == "") {
+    if (!desiredDisplayName) {
         res.json({
             status: "FAILED",
-            message: "Empty credentials supplied!"
+            message: "Empty display name supplied!"
         });
     } else {
         // Check if user exist
-        User.find({ email: email })
+        User.find({ _id: userID })
         .then((data) => {
             if (data.length) {
                 //User Exists
-
-                const hashedPassword = data[0].password;
-                bcrypt.compare(password, hashedPassword).then((result) => {
-                        if (result) {
-                            // Password match
-                            User.findOneAndUpdate({email: userEmail}, {displayName: desiredDisplayName}).then(function(){
-                                console.log("SUCCESS1")
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Change Display Name Successful",
-                                    data: data
-                                })
-                            })
-                            .catch(err => {
-                                res.json({
-                                    status: "FAILED",
-                                    message: " An error occured while checking for existing user"
-                                })
-                            });
-                        } else {
-                            res.json({
-                                status: "FAILED",
-                                message: "Invalid password entered!"
-                            })
-                        }
+                User.findOneAndUpdate({_id: userID}, {displayName: desiredDisplayName}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Display name changed successfully."
                     })
-                    .catch(err => {
-                        res.json({
-                            status: "FAILED",
-                            message: "An error occured while comparing passwords!"
-                        })
-                    })
-                } else {
+                }).catch(err => {
+                    console.log(err)
                     res.json({
                         status: "FAILED",
-                        message: "Invalid credentials entered!"
+                        message: "Error updating display name."
                     })
-                }
-            })
-            .catch(err => {
+                })
+            } else {
                 res.json({
                     status: "FAILED",
-                    message: " An error occured while checking for existing user"
+                    message: "User not found!"
                 })
+            }
+        }).catch(err => {
+            res.json({
+                status: "FAILED",
+                message: " An error occured while checking for existing user"
+            })
         })
     }
 })
@@ -511,20 +508,18 @@ router.post('/changepassword', (req, res) => {
 
 //ChangeUsername
 router.post('/changeusername', (req, res) => {
-    let {password, userEmail, desiredUsername} = req.body;
-    password = password.trim();
+    let {desiredUsername, userID} = req.body;
     desiredUsername = desiredUsername.trim();
-    const email = userEmail
     const name = desiredUsername
 
-    if (password == "" || userEmail == "" || desiredUsername == "") {
+    if (desiredUsername == "") {
         res.json({
             status: "FAILED",
-            message: "Empty credentials supplied!"
+            message: "Username was not supplied!"
         });
     } else {
         // Check if user exist
-        User.find({email})
+        User.find({_id: userID})
         .then((data) => {
             if (data.length) {
                 //User Exists
@@ -536,44 +531,27 @@ router.post('/changeusername', (req, res) => {
                             message: "User with the provided username already exists"
                         })  
                     } else {
-                        const hashedPassword = data[0].password;
-                        bcrypt.compare(password, hashedPassword).then((result) => {
-                                if (result) {
-                                    // Password match
-                                    User.findOneAndUpdate({email: userEmail}, {name: desiredUsername}).then(function(){
-                                        console.log("SUCCESS1")
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Change Username Successful",
-                                            data: data
-                                        })
-                                    })
-                                    .catch(err => {
-                                        res.json({
-                                            status: "FAILED",
-                                            message: " An error occured while checking for existing user"
-                                        })
-                                    });
-                                } else {
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "Invalid password entered!"
-                                    })
-                                }
+                        User.findOneAndUpdate({_id: userID}, {name: desiredUsername}).then(function(){
+                            console.log("SUCCESS1")
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Change Username Successful"
                             })
-                            .catch(err => {
-                                res.json({
-                                    status: "FAILED",
-                                    message: "An error occured while comparing passwords!"
-                                })
-                            })//end
+                        })
+                        .catch(err => {
+                            console.log(err)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while checking for existing user"
+                            })
+                        });
                     }
                 })
                 
                 } else {
                     res.json({
                         status: "FAILED",
-                        message: "Invalid credentials entered!"
+                        message: "User not found!"
                     })
                 }
             })
@@ -584,6 +562,41 @@ router.post('/changeusername', (req, res) => {
                 })
         })
     }
+})
+
+//Change bio
+router.post('/changebio', (req, res) => {
+    let {bio, userID} = req.body;
+
+    User.find({_id: userID}).then((data) => {
+        if (data.length) {
+            User.findOneAndUpdate({_id: userID}, {bio: bio}).then(function(){
+                res.json({
+                    status: "SUCCESS",
+                    message: "Change Bio Successful"
+                })
+            })
+            .catch(err => {
+                console.log('Error occured while changing user with ID: ' + userID + '... bio. This was the error: ' + err);
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while checking for existing user"
+                })
+            });
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found!"
+            })
+        }
+    })
+    .catch(err => {
+        console.log(err);
+        res.json({
+            status: "FAILED",
+            message: "An error occured while checking for existing user"
+        })
+    })
 })
 
 //search page user
@@ -612,7 +625,7 @@ router.get('/searchpageusersearch/:val', (req, res) => {
                 if (data.length) {
                     var itemsProcessed = 0;
                     data.forEach(function (item, index) {
-                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].displayName, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges})
+                        foundArray.push({pubId: data[index].secondId, name: data[index].name, displayName: data[index].displayName, followers: data[index].followers.length, following: data[index].following.length, totalLikes: data[index].totalLikes, profileKey: data[index].profileImageKey, badges: data[index].badges, bio: data[index].bio, privateAccount: data[index].privateAccount})
                         itemsProcessed++;
                         if(itemsProcessed === data.length) {
                             console.log("Before Function")
@@ -797,98 +810,123 @@ router.post('/searchforpollposts', (req, res) => {
         User.find({secondId: pubId}).then(result => {
             if (result.length) {
                 //User Exists
-                async function findPolls() {
-                    var resultMain = result[0]
-                    var foundPollCreatorId = resultMain._id
-                    await Poll.find({pollCreatorId: foundPollCreatorId}).then(data =>{
-                        if (data.length) {
-                            var sendBackArray = [];
-                            var itemsProcessed = 0;
-                            data.forEach(function (item, index) {
-                                var pollUpOrDownVoted = "Neither";
-                                var userVotedFor = "None"
-                                if (data[index].pollUpVotes.includes(userId)) {
-                                    pollUpOrDownVoted = "UpVoted"
-                                } else if (data[index].pollDownVotes.includes(userId)) {
-                                    pollUpOrDownVoted = "DownVoted"
-                                } else {
-                                    pollUpOrDownVoted = "Neither"
-                                }
-                                if (data[index].optionOnesVotes.includes(userId)){
-                                    userVotedFor = "One"
-                                } else if (data[index].optionTwosVotes.includes(userId)){
-                                    userVotedFor = "Two"
-                                } else if (data[index].optionThreesVotes.includes(userId)){
-                                    userVotedFor = "Three"
-                                } else if (data[index].optionFoursVotes.includes(userId)){
-                                    userVotedFor = "Four"
-                                } else if (data[index].optionFivesVotes.includes(userId)){
-                                    userVotedFor = "Five"
-                                } else if (data[index].optionSixesVotes.includes(userId)){
-                                    userVotedFor = "Six"
-                                } else {
-                                    userVotedFor = "None"
-                                }
-                                if (data.length) {
-                                    const sendBackObject = {
-                                        _id: data[index]._id,
-                                        pollTitle: data[index].pollTitle,
-                                        pollSubTitle: data[index].pollSubTitle,
-                                        optionOne: data[index].optionOne,
-                                        optionOnesColor: data[index].optionOnesColor,
-                                        optionOnesVotes: data[index].optionOnesVotes.length,
-                                        optionTwo: data[index].optionTwo,
-                                        optionTwosColor: data[index].optionTwosColor,
-                                        optionTwosVotes: data[index].optionTwosVotes.length,
-                                        optionThree: data[index].optionThree,
-                                        optionThreesColor: data[index].optionThreesColor,
-                                        optionThreesVotes: data[index].optionThreesVotes.length,
-                                        optionFour: data[index].optionFour,
-                                        optionFoursColor: data[index].optionFoursColor,
-                                        optionFoursVotes: data[index].optionFoursVotes.length,
-                                        optionFive: data[index].optionFive,
-                                        optionFivesColor: data[index].optionFivesColor,
-                                        optionFivesVotes: data[index].optionFivesVotes.length,
-                                        optionSix: data[index].optionSix,
-                                        optionSixesColor: data[index].optionSixesColor,
-                                        optionSixesVotes: data[index].optionSixesVotes.length,
-                                        totalNumberOfOptions: data[index].totalNumberOfOptions,
-                                        pollUpOrDownVotes: (data[index].pollUpVotes.length-data[index].pollDownVotes.length),
-                                        votedFor: userVotedFor,
-                                        pollUpOrDownVoted: pollUpOrDownVoted,
-                                        pollComments: data[index].pollComments,
-                                        creatorPfpKey: resultMain.profileImageKey,
-                                        creatorName: resultMain.name,
-                                        creatorDisplayName: resultMain.displayName,
-                                        datePosted: data[index].datePosted,
-                                        allowScreenShots: data[index].allowScreenShots
-                                    }
-                                    sendBackArray.push(sendBackObject)
-
-                                    itemsProcessed++;
-                                    if(itemsProcessed === data.length) {
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Poll search successful",
-                                            data: sendBackArray
-                                        })
-                                    }
-                                } else {
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "Nothing could be found"
-                                    })
-                                }
-                            })
-                        } else {
+                User.find({_id: userId}).then(userGettingPollPosts => {
+                    if (userGettingPollPosts.length) {
+                        if (result[0].blockedAccounts.includes(userGettingPollPosts[0].secondId)) {
+                            // User is blocked so do not send posts
                             res.json({
                                 status: "FAILED",
-                                message: "No Poll Posts"
+                                message: "User not found."
                             })
+                        } else {
+                            // User exists
+                            async function findPolls() {
+                                var resultMain = result[0]
+                                var foundPollCreatorId = resultMain._id
+                                await Poll.find({pollCreatorId: foundPollCreatorId}).then(data =>{
+                                    if (data.length) {
+                                        var sendBackArray = [];
+                                        var itemsProcessed = 0;
+                                        data.forEach(function (item, index) {
+                                            var pollUpOrDownVoted = "Neither";
+                                            var userVotedFor = "None"
+                                            if (data[index].pollUpVotes.includes(userId)) {
+                                                pollUpOrDownVoted = "UpVoted"
+                                            } else if (data[index].pollDownVotes.includes(userId)) {
+                                                pollUpOrDownVoted = "DownVoted"
+                                            } else {
+                                                pollUpOrDownVoted = "Neither"
+                                            }
+                                            if (data[index].optionOnesVotes.includes(userId)){
+                                                userVotedFor = "One"
+                                            } else if (data[index].optionTwosVotes.includes(userId)){
+                                                userVotedFor = "Two"
+                                            } else if (data[index].optionThreesVotes.includes(userId)){
+                                                userVotedFor = "Three"
+                                            } else if (data[index].optionFoursVotes.includes(userId)){
+                                                userVotedFor = "Four"
+                                            } else if (data[index].optionFivesVotes.includes(userId)){
+                                                userVotedFor = "Five"
+                                            } else if (data[index].optionSixesVotes.includes(userId)){
+                                                userVotedFor = "Six"
+                                            } else {
+                                                userVotedFor = "None"
+                                            }
+                                            if (data.length) {
+                                                const sendBackObject = {
+                                                    _id: data[index]._id,
+                                                    pollTitle: data[index].pollTitle,
+                                                    pollSubTitle: data[index].pollSubTitle,
+                                                    optionOne: data[index].optionOne,
+                                                    optionOnesColor: data[index].optionOnesColor,
+                                                    optionOnesVotes: data[index].optionOnesVotes.length,
+                                                    optionTwo: data[index].optionTwo,
+                                                    optionTwosColor: data[index].optionTwosColor,
+                                                    optionTwosVotes: data[index].optionTwosVotes.length,
+                                                    optionThree: data[index].optionThree,
+                                                    optionThreesColor: data[index].optionThreesColor,
+                                                    optionThreesVotes: data[index].optionThreesVotes.length,
+                                                    optionFour: data[index].optionFour,
+                                                    optionFoursColor: data[index].optionFoursColor,
+                                                    optionFoursVotes: data[index].optionFoursVotes.length,
+                                                    optionFive: data[index].optionFive,
+                                                    optionFivesColor: data[index].optionFivesColor,
+                                                    optionFivesVotes: data[index].optionFivesVotes.length,
+                                                    optionSix: data[index].optionSix,
+                                                    optionSixesColor: data[index].optionSixesColor,
+                                                    optionSixesVotes: data[index].optionSixesVotes.length,
+                                                    totalNumberOfOptions: data[index].totalNumberOfOptions,
+                                                    pollUpOrDownVotes: (data[index].pollUpVotes.length-data[index].pollDownVotes.length),
+                                                    votedFor: userVotedFor,
+                                                    pollUpOrDownVoted: pollUpOrDownVoted,
+                                                    pollComments: data[index].pollComments,
+                                                    creatorPfpKey: resultMain.profileImageKey,
+                                                    creatorName: resultMain.name,
+                                                    creatorDisplayName: resultMain.displayName,
+                                                    datePosted: data[index].datePosted,
+                                                    allowScreenShots: data[index].allowScreenShots
+                                                }
+                                                sendBackArray.push(sendBackObject)
+            
+                                                itemsProcessed++;
+                                                if(itemsProcessed === data.length) {
+                                                    res.json({
+                                                        status: "SUCCESS",
+                                                        message: "Poll search successful",
+                                                        data: sendBackArray
+                                                    })
+                                                }
+                                            } else {
+                                                res.json({
+                                                    status: "FAILED",
+                                                    message: "Nothing could be found"
+                                                })
+                                            }
+                                        })
+                                    } else {
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "No Poll Posts"
+                                        })
+                                    }
+                                })
+                            }
+                            findPolls()
                         }
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "Cannot find user."
+                        })
+                    }
+                }).catch(error => {
+                    console.log(error)
+                    console.log('An error occured while finding user with ID: ' + userId)
+                    res.json({
+                        status: "FAILED",
+                        message: "Cannot find user"
                     })
-                }
-                findPolls()
+                })
             } else {
                 res.json({
                     status: "FAILED",
@@ -2028,233 +2066,269 @@ router.post('/deletepoll', (req, res) => {
 //Post Image
 router.post('/postImage', upload.single('image'), async (req, res) => {
     let {title, description, creatorId, sentAllowScreenShots} = req.body;
-    const file = req.file;
-    if (file == null || typeof file == 'undefined' || title == "" || typeof title == 'undefined' || description == "" || typeof description == 'undefined' || creatorId == null || typeof creatorId == 'undefined' ) {
-        res.json({
+    //const file = req.file;
+    if (!req.file) {
+        console.log("No file recieved.")
+        return res.send({
             status: "FAILED",
-            message: "Empty values sent."
-        })
+            message: "No file sent."
+        });
     } else {
-        console.log(file)
-        console.log(title)
-        console.log(description)
-        console.log(creatorId)
-        User.find({_id: creatorId}).then(result => {
-            if (result.length) {
-                async function asyncCall() {
-                    const result = await uploadFile(file)
-                    await unlinkFile(file.path)
-                    console.log(result)
-                    if (result !== null) {
-                        var currentdate = new Date(); 
-                        //
-                        var twoDigitDate = ''
-                        if (currentdate.getDate() < 10) {
-                            twoDigitDate = '0' + currentdate.getDate()
-                        } else {
-                            twoDigitDate = currentdate.getDate()
-                        }
-                        //
-                        var twoDigitMonth = ''
-                        var recievedMonth = currentdate.getMonth()+1
-                        if (recievedMonth < 10) {
-                            twoDigitMonth = '0' + recievedMonth
-                        } else {
-                            twoDigitMonth = recievedMonth
-                        }
-                        //
-                        var twoDigitHour = ''
-                        if (currentdate.getHours() < 10) {
-                            twoDigitHour = '0' + currentdate.getHours()
-                        } else {
-                            twoDigitHour = currentdate.getHours()
-                        }
-                        //
-                        var twoDigitMinutes = ''
-                        if (currentdate.getMinutes() < 10) {
-                            twoDigitMinutes = '0' + currentdate.getMinutes()
-                        } else {
-                            twoDigitMinutes = currentdate.getMinutes()
-                        }
-                        //
-                        var twoDigitSeconds = ''
-                        if (currentdate.getSeconds() < 10) {
-                            twoDigitSeconds = '0' + currentdate.getSeconds()
-                        } else {
-                            twoDigitSeconds = currentdate.getSeconds()
-                        }
-                        //
-                        var datetime = twoDigitDate + "/"
-                        + twoDigitMonth  + "/" 
-                        + currentdate.getFullYear() + " @ "  
-                        + twoDigitHour + ":"  
-                        + twoDigitMinutes + ":" 
-                        + twoDigitSeconds;
-                        //allowScreenShots set up
-                        console.log(sentAllowScreenShots)
-                        var allowScreenShots = sentAllowScreenShots
-                        if (sentAllowScreenShots == true || allowScreenShots == "true") {
-                            console.log("sent allow ss was true")
-                            allowScreenShots = true
-                        } else if (sentAllowScreenShots == false || allowScreenShots == "false") {
-                            console.log("sent allow ss was false")
-                            allowScreenShots = false
-                        } else {    
-                            console.log("Sent allow ss wasnt true or false so set true")
-                            allowScreenShots = true
-                        }
-                        console.log(`allowScreenShots ${allowScreenShots}`)
-                        const newImage = new ImagePost({
-                            imageKey: result.Key,
-                            imageTitle: title, 
-                            imageDescription: description,
-                            imageUpVotes: [],
-                            imageDownVotes: [],
-                            imageCreatorId: creatorId,
-                            imageComments: [],
-                            datePosted: datetime,
-                            allowScreenShots: allowScreenShots
-                        });
-    
-                        newImage.save().then(result => {
-                            res.json({
-                                status: "SUCCESS",
-                                message: "Post successful",
-                            })
-                        })
-                        .catch(err => {
-                            res.json({
-                                status: "FAILED",
-                                message: "An error occurred while saving post!"
-                            })
-                        })
-                    } else {
-                        res.json({
-                            status: "FAILED",
-                            message: "An error occurred while uploading image!"
-                        })
-                    }
-                }
-                  
-                asyncCall();
-            } else {
-                res.json({
-                    status: "FAILED",
-                    message: "An error occurred while getting user data!"
-                })
-            }
-        }).catch(err => {
-            console.log(err)
+        console.log('File has been recieved: ', req.file.filename)
+        if (title == "" || typeof title == 'undefined' || description == "" || typeof description == 'undefined' || creatorId == null || typeof creatorId == 'undefined' ) {
             res.json({
                 status: "FAILED",
-                message: "Error occured finding user."
+                message: "Empty values sent."
             })
-        })
+        } else {
+            //console.log(file)
+            console.log(title)
+            console.log(description)
+            console.log(creatorId)
+            User.find({_id: creatorId}).then(result => {
+                if (result.length) {
+                    var currentdate = new Date(); 
+                    //
+                    var twoDigitDate = ''
+                    if (currentdate.getDate() < 10) {
+                        twoDigitDate = '0' + currentdate.getDate()
+                    } else {
+                        twoDigitDate = currentdate.getDate()
+                    }
+                    //
+                    var twoDigitMonth = ''
+                    var recievedMonth = currentdate.getMonth()+1
+                    if (recievedMonth < 10) {
+                        twoDigitMonth = '0' + recievedMonth
+                    } else {
+                        twoDigitMonth = recievedMonth
+                    }
+                    //
+                    var twoDigitHour = ''
+                    if (currentdate.getHours() < 10) {
+                        twoDigitHour = '0' + currentdate.getHours()
+                    } else {
+                        twoDigitHour = currentdate.getHours()
+                    }
+                    //
+                    var twoDigitMinutes = ''
+                    if (currentdate.getMinutes() < 10) {
+                        twoDigitMinutes = '0' + currentdate.getMinutes()
+                    } else {
+                        twoDigitMinutes = currentdate.getMinutes()
+                    }
+                    //
+                    var twoDigitSeconds = ''
+                    if (currentdate.getSeconds() < 10) {
+                        twoDigitSeconds = '0' + currentdate.getSeconds()
+                    } else {
+                        twoDigitSeconds = currentdate.getSeconds()
+                    }
+                    //
+                    var datetime = twoDigitDate + "/"
+                    + twoDigitMonth  + "/" 
+                    + currentdate.getFullYear() + " @ "  
+                    + twoDigitHour + ":"  
+                    + twoDigitMinutes + ":" 
+                    + twoDigitSeconds;
+                    //allowScreenShots set up
+                    console.log(sentAllowScreenShots)
+                    var allowScreenShots = sentAllowScreenShots
+                    if (sentAllowScreenShots == true || allowScreenShots == "true") {
+                        console.log("sent allow ss was true")
+                        allowScreenShots = true
+                    } else if (sentAllowScreenShots == false || allowScreenShots == "false") {
+                        console.log("sent allow ss was false")
+                        allowScreenShots = false
+                    } else {    
+                        console.log("Sent allow ss wasnt true or false so set true")
+                        allowScreenShots = true
+                    }
+                    console.log(`allowScreenShots ${allowScreenShots}`)
+                    const newImage = new ImagePost({
+                        imageKey: req.file.filename,
+                        imageTitle: title, 
+                        imageDescription: description,
+                        imageUpVotes: [],
+                        imageDownVotes: [],
+                        imageCreatorId: creatorId,
+                        imageComments: [],
+                        datePosted: datetime,
+                        allowScreenShots: allowScreenShots
+                    });
+
+                    newImage.save().then(result => {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Post successful",
+                        })
+                    })
+                    .catch(err => {
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occurred while saving post!"
+                        })
+                    })
+                } else {
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occurred while getting user data!"
+                    })
+                }
+            }).catch(err => {
+                console.log(err)
+                res.json({
+                    status: "FAILED",
+                    message: "Error occured finding user."
+                })
+            })
+        }
     }
 })
 
 //Post Profile Image
 router.post('/postProfileImage', upload.single('image'), async (req, res) => {
     let {userId} = req.body;
-    const file = req.file;
-    //check if user exists
-    User.find({_id: userId}).then(result => {
-        if (result.length) {
-            async function asyncCall() {
-                const result = await uploadFile(file)
-                await unlinkFile(file.path)
-                console.log(result)
-                if (result !== null) {
-                    User.findOneAndUpdate({_id: userId}, { profileImageKey: result.Key }).then(function(){
-                        console.log("SUCCESS1")
-                        res.json({
-                            status: "SUCCESS",
-                            message: "Profile Image Updated",
-                        })
+    //const file = req.file;
+    if (!req.file) {
+        console.log("No file recieved.")
+        return res.send({
+            status: "FAILED",
+            message: "No file sent."
+        });
+    } else {
+        console.log('File has been recieved: ', req.file.filename)
+        //check if user exists
+        User.find({_id: userId}).then(result => {
+            if (result.length) {
+                //todo remove prev if there is one
+                User.findOneAndUpdate({_id: userId}, { profileImageKey: req.file.filename }).then(function(){
+                    console.log("SUCCESS1")
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Profile Image Updated",
                     })
-                    .catch(err => {
-                        console.log(err)
-                        res.json({
-                            status: "FAILED",
-                            message: "Error updating"
-                        })
-                    });
-                } else {
+                })
+                .catch(err => {
+                    console.log(err)
                     res.json({
                         status: "FAILED",
-                        message: "An error occurred while uploading image!"
+                        message: "Error updating"
                     })
-                }
+                });
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "An error occurred while getting user data!"
+                })
             }
-            asyncCall();
-        } else {
+        })
+        .catch(err => { 
+            console.log(err)
             res.json({
                 status: "FAILED",
-                message: "An error occurred while getting user data!"
+                message: "Error Searching"
             })
-        }
-    })
-    .catch(err => { 
-        console.log(err)
-        res.json({
-            status: "FAILED",
-            message: "Error Searching"
-        })
-    });
+        });
+    }
 })
 
 //Get Images From Profile
 router.post('/getImagesFromProfile', (req, res) => {
     let {pubId, userId} = req.body;
-    User.find({secondId: pubId}).then(data =>{ 
-        if (data.length) {
-            var findUser = data[0]
-            ImagePost.find({imageCreatorId: findUser._id}).then(result => {
-                if (result.length) {
-                    var allImageKeys = []
-                    var itemsProcessed = 0;
-                    result.forEach(function (item, index) {
-                        var imageKey = result[index].imageKey
-                        var imageTitle = result[index].imageTitle
-                        var imageDescription = result[index].imageDescription
-                        var imageUpVotes = (result[index].imageUpVotes.length-result[index].imageDownVotes.length)
-                        var imageComments = result[index].imageComments
-                        var creatorName = findUser.name
-                        var creatorDisplayName = findUser.displayName
-                        var creatorPfpKey = findUser.profileImageKey
-                        var datePosted = result[index].datePosted
-                        var imageUpVoted = false
-                        if (result[index].imageUpVotes.includes(userId)) {
-                            imageUpVoted = true
-                        }
-                        var imageDownVoted = false
-                        if (result[index].imageDownVotes.includes(userId)) {
-                            imageDownVoted = true
-                        }
-                        var allowScreenShots = result[index].allowScreenShots
-                        allImageKeys.push({imageKey: imageKey, imageTitle: imageTitle, imageDescription: imageDescription, imageUpVotes: imageUpVotes, imageComments: imageComments, creatorName: creatorName, creatorDisplayName: creatorDisplayName, creatorPfpKey: creatorPfpKey, datePosted: datePosted, imageUpVoted: imageUpVoted, imageDownVoted: imageDownVoted, allowScreenShots: allowScreenShots})
-                        itemsProcessed++;
-                        if(itemsProcessed === result.length) {
-                            res.json({
-                                status: "SUCCESS",
-                                message: "Posts found",
-                                data: allImageKeys
-                            })
-                        }
-                    })
-                } else {
-                    res.json({
-                        status: "FAILED",
-                        message: "This user has no image posts!"
-                    })
-                }
-            })
-        } else {
+
+    const getImagesAndSendToUser = (findUser) => {
+        ImagePost.find({imageCreatorId: findUser._id}).then(result => {
+            if (result.length) {
+                var allImageKeys = []
+                var itemsProcessed = 0;
+                result.forEach(function (item, index) {
+                    var imageKey = result[index].imageKey
+                    var imageTitle = result[index].imageTitle
+                    var imageDescription = result[index].imageDescription
+                    var imageUpVotes = (result[index].imageUpVotes.length-result[index].imageDownVotes.length)
+                    var imageComments = result[index].imageComments
+                    var creatorName = findUser.name
+                    var creatorDisplayName = findUser.displayName
+                    var creatorPfpKey = findUser.profileImageKey
+                    var datePosted = result[index].datePosted
+                    var imageUpVoted = false
+                    if (result[index].imageUpVotes.includes(userId)) {
+                        imageUpVoted = true
+                    }
+                    var imageDownVoted = false
+                    if (result[index].imageDownVotes.includes(userId)) {
+                        imageDownVoted = true
+                    }
+                    var allowScreenShots = result[index].allowScreenShots
+                    allImageKeys.push({imageKey: imageKey, imageTitle: imageTitle, imageDescription: imageDescription, imageUpVotes: imageUpVotes, imageComments: imageComments, creatorName: creatorName, creatorDisplayName: creatorDisplayName, creatorPfpKey: creatorPfpKey, datePosted: datePosted, imageUpVoted: imageUpVoted, imageDownVoted: imageDownVoted, allowScreenShots: allowScreenShots})
+                    itemsProcessed++;
+                    if(itemsProcessed === result.length) {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Posts found",
+                            data: allImageKeys
+                        })
+                    }
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "This user has no image posts!"
+                })
+            }
+        }).catch(error => {
+            console.log('An error occured while getting user images. User ID: ' + findUser._id)
+            console.log(error)
             res.json({
                 status: "FAILED",
-                message: "An error occurred while getting user data!"
+                message: "An error occured while getting user images"
             })
-        }
+        })
+    }
+
+    User.find({secondId: pubId}).then(data => { 
+        User.find({_id: userId}).then(secondData => {
+            const userPublicID = secondData[0].secondId;
+            if (data[0].blockedAccounts.includes(userPublicID)) {
+                res.json({
+                    status: "FAILED",
+                    message: "User not found."
+                })
+            } else {
+                if (data[0].privateAccount != true) {
+                    if (data.length) {
+                        var findUser = data[0]
+                        getImagesAndSendToUser(findUser)
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occurred while getting user data!"
+                        })
+                    }
+                } else {
+                    //ACCOUNT IS PRIVAT
+                    const isFollowingUser = data[0].followers.includes(userPublicID);
+                    if (isFollowingUser == true) {
+                        //User is following this account so send posts
+                        getImagesAndSendToUser(data[0])
+                    } else {
+                        //User is not following this account so DO NOT SEND POSTS
+                        res.json({
+                            status: "FAILED",
+                            message: "This user has no image posts!"
+                        })
+                    }
+                }
+            }
+        }).catch(error => {
+            console.log('An error occured while finding user with ID: ' + userId + '.')
+            console.log(error)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while finding user."
+            })
+        })
     })
 })
 
@@ -3064,126 +3138,122 @@ router.get('/searchforimagecommentreplies/:sentimagekey/:sentuserid/:sentcomment
 //Create Category
 router.post('/postcategorywithimage', upload.single('image'), async (req, res) => {
     let {creatorId, categoryTitle, categoryDescription, categoryTags, categoryNSFW, categoryNSFL, sentAllowScreenShots} = req.body;
-    const file = req.file;
-    console.log(file)
-    User.find({_id: creatorId}).then(result => {
-        if (result.length) {
-            async function asyncCall() {
-                const result = await uploadFile(file)
-                await unlinkFile(file.path)
-                console.log(result)
-                if (result !== null) {
-                    if (categoryNSFW == "true") {
-                        categoryNSFW=true
-                        categoryNSFL = false
-                    } else if (categoryNSFL == "true") {
-                        categoryNSFL = true
-                        categoryNSFW = false
-                    } else {
-                        categoryNSFW = false
-                        categoryNSFL = false
-                    }
-                    var currentdate = new Date(); 
-                    //
-                    var twoDigitDate = ''
-                    if (currentdate.getDate() < 10) {
-                        twoDigitDate = '0' + currentdate.getDate()
-                    } else {
-                        twoDigitDate = currentdate.getDate()
-                    }
-                    //
-                    var twoDigitMonth = ''
-                    var recievedMonth = currentdate.getMonth()+1
-                    if (recievedMonth < 10) {
-                        twoDigitMonth = '0' + recievedMonth
-                    } else {
-                        twoDigitMonth = recievedMonth
-                    }
-                    //
-                    var twoDigitHour = ''
-                    if (currentdate.getHours() < 10) {
-                        twoDigitHour = '0' + currentdate.getHours()
-                    } else {
-                        twoDigitHour = currentdate.getHours()
-                    }
-                    //
-                    var twoDigitMinutes = ''
-                    if (currentdate.getMinutes() < 10) {
-                        twoDigitMinutes = '0' + currentdate.getMinutes()
-                    } else {
-                        twoDigitMinutes = currentdate.getMinutes()
-                    }
-                    //
-                    var twoDigitSeconds = ''
-                    if (currentdate.getSeconds() < 10) {
-                        twoDigitSeconds = '0' + currentdate.getSeconds()
-                    } else {
-                        twoDigitSeconds = currentdate.getSeconds()
-                    }
-                    //
-                    var datetime = twoDigitDate + "/"
-                    + twoDigitMonth  + "/" 
-                    + currentdate.getFullYear() + " @ "  
-                    + twoDigitHour + ":"  
-                    + twoDigitMinutes + ":" 
-                    + twoDigitSeconds;
-                    //allowScreenShots set up
-                    console.log(sentAllowScreenShots)
-                    var allowScreenShots = sentAllowScreenShots
-                    if (sentAllowScreenShots == true || sentAllowScreenShots == "true") {
-                        console.log("sent allow ss was true")
-                        allowScreenShots = true
-                    } else if (sentAllowScreenShots == false || sentAllowScreenShots == "false") {
-                        console.log("sent allow ss was false")
-                        allowScreenShots = false
-                    } else {    
-                        console.log("Sent allow ss wasnt true or false so set true")
-                        allowScreenShots = true
-                    }
-                    console.log(`allowScreenShots ${allowScreenShots}`)
-
-                    const newCategory = new Category({
-                        imageKey: result.Key,
-                        categoryTitle: categoryTitle, 
-                        categoryDescription: categoryDescription,
-                        categoryTags: categoryTags,
-                        members: [creatorId],
-                        NSFW: categoryNSFW,
-                        NSFL: categoryNSFL,
-                        categoryOwnerId: creatorId,
-                        categoryOriginalCreator: creatorId,
-                        categoryModeratorIds: [],
-                        datePosted: datetime,
-                        allowScreenShots: allowScreenShots
-                    });
-
-                    newCategory.save().then(result => {
-                        res.json({
-                            status: "SUCCESS",
-                            message: "Creation successful",
-                        })
-                    })
-                    .catch(err => {
-                        res.json({
-                            status: "FAILED",
-                            message: "An error occurred while saving category!"
-                        })
-                    })
+    //const file = req.file;
+    //console.log(file)
+    if (!req.file) {
+        console.log("No file recieved.")
+        return res.send({
+            status: "FAILED",
+            message: "No file sent."
+        });
+    } else {
+        console.log('File has been recieved: ', req.file.filename)
+        User.find({_id: creatorId}).then(result => {
+            if (result.length) {
+                if (categoryNSFW == "true") {
+                    categoryNSFW=true
+                    categoryNSFL = false
+                } else if (categoryNSFL == "true") {
+                    categoryNSFL = true
+                    categoryNSFW = false
                 } else {
+                    categoryNSFW = false
+                    categoryNSFL = false
+                }
+                var currentdate = new Date(); 
+                //
+                var twoDigitDate = ''
+                if (currentdate.getDate() < 10) {
+                    twoDigitDate = '0' + currentdate.getDate()
+                } else {
+                    twoDigitDate = currentdate.getDate()
+                }
+                //
+                var twoDigitMonth = ''
+                var recievedMonth = currentdate.getMonth()+1
+                if (recievedMonth < 10) {
+                    twoDigitMonth = '0' + recievedMonth
+                } else {
+                    twoDigitMonth = recievedMonth
+                }
+                //
+                var twoDigitHour = ''
+                if (currentdate.getHours() < 10) {
+                    twoDigitHour = '0' + currentdate.getHours()
+                } else {
+                    twoDigitHour = currentdate.getHours()
+                }
+                //
+                var twoDigitMinutes = ''
+                if (currentdate.getMinutes() < 10) {
+                    twoDigitMinutes = '0' + currentdate.getMinutes()
+                } else {
+                    twoDigitMinutes = currentdate.getMinutes()
+                }
+                //
+                var twoDigitSeconds = ''
+                if (currentdate.getSeconds() < 10) {
+                    twoDigitSeconds = '0' + currentdate.getSeconds()
+                } else {
+                    twoDigitSeconds = currentdate.getSeconds()
+                }
+                //
+                var datetime = twoDigitDate + "/"
+                + twoDigitMonth  + "/" 
+                + currentdate.getFullYear() + " @ "  
+                + twoDigitHour + ":"  
+                + twoDigitMinutes + ":" 
+                + twoDigitSeconds;
+                //allowScreenShots set up
+                console.log(sentAllowScreenShots)
+                var allowScreenShots = sentAllowScreenShots
+                if (sentAllowScreenShots == true || sentAllowScreenShots == "true") {
+                    console.log("sent allow ss was true")
+                    allowScreenShots = true
+                } else if (sentAllowScreenShots == false || sentAllowScreenShots == "false") {
+                    console.log("sent allow ss was false")
+                    allowScreenShots = false
+                } else {    
+                    console.log("Sent allow ss wasnt true or false so set true")
+                    allowScreenShots = true
+                }
+                console.log(`allowScreenShots ${allowScreenShots}`)
+
+                const newCategory = new Category({
+                    imageKey: req.file.filename,
+                    categoryTitle: categoryTitle, 
+                    categoryDescription: categoryDescription,
+                    categoryTags: categoryTags,
+                    members: [creatorId],
+                    NSFW: categoryNSFW,
+                    NSFL: categoryNSFL,
+                    categoryOwnerId: creatorId,
+                    categoryOriginalCreator: creatorId,
+                    categoryModeratorIds: [],
+                    datePosted: datetime,
+                    allowScreenShots: allowScreenShots
+                });
+
+                newCategory.save().then(result => {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Creation successful",
+                    })
+                })
+                .catch(err => {
                     res.json({
                         status: "FAILED",
-                        message: "An error occurred while uploading image!"
+                        message: "An error occurred while saving category!"
                     })
-                }
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "An error occurred while getting user data!"
+                })
             }
-            asyncCall();
-        } else {
-            res.json({
-                status: "FAILED",
-                message: "An error occurred while getting user data!"
-            })
-        }
-    })
+        })
+    }
 })
 
 //Delete Thread
@@ -3585,41 +3655,57 @@ router.get('/findcategoryfromprofile/:pubId/:sentid', (req, res) => {
         
         User.find({secondId: pubId}).then(result => {
             if (result.length) {
-                async function findCategories() {
-                    var profilesId = result[0]._id
-                    console.log("profilesId:")
-                    console.log(profilesId)
-                    await Category.find( { "members": `${profilesId}` } ).then(data =>{
-                        console.log("Found categories")
-                        console.log(data)
-                        if (data.length) {
-                            data.forEach(function (item, index) {
-                                var inCategory = false
-                                if (data[index].members.includes(sentId)) {
-                                    inCategory = true
-                                }
-                                foundCategories.push({categoryTitle: data[index].categoryTitle, categoryDescription: data[index].categoryDescription, members: data[index].members.length, categoryTags: data[index].categoryTags, imageKey: data[index].imageKey, NSFW: data[index].NSFW, NSFL: data[index].NSFL, datePosted: data[index].datePosted, inCategory: inCategory, allowScreenShots: data[index].allowScreenShots})
-                                itemsProcessed++;
-                                if(itemsProcessed === data.length) {
-                                    sendResponse(foundCategories);
+                User.find({_id: sentId}).then(userRequestingCategories => {
+                    if (userRequestingCategories.length && !result[0].blockedAccounts.includes(userRequestingCategories[0].secondId)) {
+                        async function findCategories() {
+                            var profilesId = result[0]._id
+                            console.log("profilesId:")
+                            console.log(profilesId)
+                            await Category.find( { "members": `${profilesId}` } ).then(data =>{
+                                console.log("Found categories")
+                                console.log(data)
+                                if (data.length) {
+                                    data.forEach(function (item, index) {
+                                        var inCategory = false
+                                        if (data[index].members.includes(sentId)) {
+                                            inCategory = true
+                                        }
+                                        foundCategories.push({categoryTitle: data[index].categoryTitle, categoryDescription: data[index].categoryDescription, members: data[index].members.length, categoryTags: data[index].categoryTags, imageKey: data[index].imageKey, NSFW: data[index].NSFW, NSFL: data[index].NSFL, datePosted: data[index].datePosted, inCategory: inCategory, allowScreenShots: data[index].allowScreenShots})
+                                        itemsProcessed++;
+                                        if(itemsProcessed === data.length) {
+                                            sendResponse(foundCategories);
+                                        }
+                                    })
+                                } else {
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "No categories found"
+                                    })
                                 }
                             })
-                        } else {
-                            res.json({
-                                status: "FAILED",
-                                message: "No categories found"
-                            })
+                            .catch(err => {
+                                console.log(err)
+                                res.json({
+                                    status: "FAILED",
+                                    message: "An error occured when searching"
+                                })
+                            });
                         }
-                    })
-                    .catch(err => {
-                        console.log(err)
+                        findCategories()
+                    } else {
                         res.json({
                             status: "FAILED",
-                            message: "An error occured when searching"
+                            message: "User not found."
                         })
-                    });
-                }
-                findCategories()
+                    }
+                }).catch(error => {
+                    console.log(error)
+                    console.log('An error occured while finding user with ID: ' + sentId)
+                    res.json({
+                        status: "FAILED",
+                        message: "Error while finding user."
+                    })
+                })
             } else {
                 res.json({
                     status: "FAILED",
@@ -3796,128 +3882,124 @@ router.post('/posttextthread', (req, res) => {
 //Post Image
 router.post('/postimagethread', upload.single('image'), async (req, res) => {
     let {creatorId, threadTitle, threadSubtitle, threadTags, threadCategory, threadImageDescription, threadNSFW, threadNSFL, sentAllowScreenShots} = req.body;
-    const file = req.file;
-    console.log(creatorId)
-    User.find({_id: creatorId}).then(result => {
-        if (result.length) {
-            Category.find({categoryTitle: threadCategory}).then(data => {
-                if (data.length) {
-                    async function asyncCall() {
-                        const result = await uploadFile(file)
-                        await unlinkFile(file.path)
-                        console.log(result)
-                        if (result !== null) {
-                            var currentdate = new Date(); 
-                            //
-                            var twoDigitDate = ''
-                            if (currentdate.getDate() < 10) {
-                                twoDigitDate = '0' + currentdate.getDate()
-                            } else {
-                                twoDigitDate = currentdate.getDate()
-                            }
-                            //
-                            var twoDigitMonth = ''
-                            var recievedMonth = currentdate.getMonth()+1
-                            if (recievedMonth < 10) {
-                                twoDigitMonth = '0' + recievedMonth
-                            } else {
-                                twoDigitMonth = recievedMonth
-                            }
-                            //
-                            var twoDigitHour = ''
-                            if (currentdate.getHours() < 10) {
-                                twoDigitHour = '0' + currentdate.getHours()
-                            } else {
-                                twoDigitHour = currentdate.getHours()
-                            }
-                            //
-                            var twoDigitMinutes = ''
-                            if (currentdate.getMinutes() < 10) {
-                                twoDigitMinutes = '0' + currentdate.getMinutes()
-                            } else {
-                                twoDigitMinutes = currentdate.getMinutes()
-                            }
-                            //
-                            var twoDigitSeconds = ''
-                            if (currentdate.getSeconds() < 10) {
-                                twoDigitSeconds = '0' + currentdate.getSeconds()
-                            } else {
-                                twoDigitSeconds = currentdate.getSeconds()
-                            }
-                            //
-                            var datetime = twoDigitDate + "/"
-                            + twoDigitMonth  + "/" 
-                            + currentdate.getFullYear() + " @ "  
-                            + twoDigitHour + ":"  
-                            + twoDigitMinutes + ":" 
-                            + twoDigitSeconds;
-                            //allowScreenShots set up
-                            var allowScreenShots = sentAllowScreenShots // just an intial value
-                            if (data[0].allowScreenShots !== false) {
-                                console.log(sentAllowScreenShots)
-                                var allowScreenShots = sentAllowScreenShots
-                                if (sentAllowScreenShots == true) {
-                                    console.log("sent allow ss was true")
-                                    allowScreenShots = true
-                                } else if (sentAllowScreenShots == false) {
-                                    console.log("sent allow ss was false")
-                                    allowScreenShots = false
-                                } else {    
-                                    console.log("Sent allow ss wasnt true or false so set true")
-                                    allowScreenShots = true
-                                }
-                            } else {
-                                allowScreenShots = false
-                            }
-                            console.log(`allowScreenShots ${allowScreenShots}`)
-                            const newThread = new Thread({
-                                threadType: "Images",
-                                threadComments: [],
-                                threadUpVotes: [],
-                                threadDownVotes: [],
-                                creatorId: creatorId,
-                                threadTitle: threadTitle,
-                                threadSubtitle: threadSubtitle,
-                                threadTags: threadTags,
-                                threadCategory: threadCategory,
-                                threadBody: "",
-                                threadImageKey: result.Key,
-                                threadImageDescription: threadImageDescription,
-                                threadNSFW: threadNSFW,
-                                threadNSFL: threadNSFL,
-                                datePosted: datetime,
-                                allowScreenShots: allowScreenShots
-                            });
-
-                            newThread.save().then(result => {
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Creation successful",
-                                })
-                            })
-                            .catch(err => {
-                                res.json({
-                                    status: "FAILED",
-                                    message: "An error occurred while saving category!"
-                                })
-                            })
+    //const file = req.file;
+    if (!req.file) {
+        console.log("No file recieved.")
+        return res.send({
+            status: "FAILED",
+            message: "No file sent."
+        });
+    } else {
+        console.log('File has been recieved: ', req.file.filename)
+        console.log(creatorId)
+        User.find({_id: creatorId}).then(result => {
+            if (result.length) {
+                Category.find({categoryTitle: threadCategory}).then(data => {
+                    if (data.length) {
+                        var currentdate = new Date(); 
+                        //
+                        var twoDigitDate = ''
+                        if (currentdate.getDate() < 10) {
+                            twoDigitDate = '0' + currentdate.getDate()
                         } else {
+                            twoDigitDate = currentdate.getDate()
+                        }
+                        //
+                        var twoDigitMonth = ''
+                        var recievedMonth = currentdate.getMonth()+1
+                        if (recievedMonth < 10) {
+                            twoDigitMonth = '0' + recievedMonth
+                        } else {
+                            twoDigitMonth = recievedMonth
+                        }
+                        //
+                        var twoDigitHour = ''
+                        if (currentdate.getHours() < 10) {
+                            twoDigitHour = '0' + currentdate.getHours()
+                        } else {
+                            twoDigitHour = currentdate.getHours()
+                        }
+                        //
+                        var twoDigitMinutes = ''
+                        if (currentdate.getMinutes() < 10) {
+                            twoDigitMinutes = '0' + currentdate.getMinutes()
+                        } else {
+                            twoDigitMinutes = currentdate.getMinutes()
+                        }
+                        //
+                        var twoDigitSeconds = ''
+                        if (currentdate.getSeconds() < 10) {
+                            twoDigitSeconds = '0' + currentdate.getSeconds()
+                        } else {
+                            twoDigitSeconds = currentdate.getSeconds()
+                        }
+                        //
+                        var datetime = twoDigitDate + "/"
+                        + twoDigitMonth  + "/" 
+                        + currentdate.getFullYear() + " @ "  
+                        + twoDigitHour + ":"  
+                        + twoDigitMinutes + ":" 
+                        + twoDigitSeconds;
+                        //allowScreenShots set up
+                        var allowScreenShots = sentAllowScreenShots // just an intial value
+                        if (data[0].allowScreenShots !== false) {
+                            console.log(sentAllowScreenShots)
+                            var allowScreenShots = sentAllowScreenShots
+                            if (sentAllowScreenShots == true) {
+                                console.log("sent allow ss was true")
+                                allowScreenShots = true
+                            } else if (sentAllowScreenShots == false) {
+                                console.log("sent allow ss was false")
+                                allowScreenShots = false
+                            } else {    
+                                console.log("Sent allow ss wasnt true or false so set true")
+                                allowScreenShots = true
+                            }
+                        } else {
+                            allowScreenShots = false
+                        }
+                        console.log(`allowScreenShots ${allowScreenShots}`)
+                        const newThread = new Thread({
+                            threadType: "Images",
+                            threadComments: [],
+                            threadUpVotes: [],
+                            threadDownVotes: [],
+                            creatorId: creatorId,
+                            threadTitle: threadTitle,
+                            threadSubtitle: threadSubtitle,
+                            threadTags: threadTags,
+                            threadCategory: threadCategory,
+                            threadBody: "",
+                            threadImageKey: req.file.filename,
+                            threadImageDescription: threadImageDescription,
+                            threadNSFW: threadNSFW,
+                            threadNSFL: threadNSFL,
+                            datePosted: datetime,
+                            allowScreenShots: allowScreenShots
+                        });
+
+                        newThread.save().then(result => {
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Creation successful",
+                            })
+                        })
+                        .catch(err => {
                             res.json({
                                 status: "FAILED",
-                                message: "An error occurred while uploading image!"
+                                message: "An error occurred while saving category!"
                             })
-                        }
+                        })
                     }
-                    asyncCall();
-                }
-            })
-        } else {
-            res.json({
-                status: "FAILED",
-                message: "An error occurred while getting user data!"
-            })
-        }
-    })
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "An error occurred while getting user data!"
+                })
+            }
+        })
+    }
 })
 
 //Get Threads From Category
@@ -4101,81 +4183,90 @@ router.get('/getthreadsfromprofile/:pubId/:sentuserid', (req, res) => {
     console.log(pubId)
     User.find({secondId: pubId}).then(userResult => {
         if (userResult.length) {
-            var userid = userResult[0]._id
-            console.log("user id:")
-            console.log(userid)
-            Thread.find({creatorId: userid}).then(result => {
-                if (result.length) {
-                    var allThreads = []
-                    var itemsProcessed = 0;
-                    result.forEach(function (item, index) {
-                        User.find({_id: result[index].creatorId}).then(data => {
-                            if (data.length) {
-                                console.log(result)
-                                var threadType = result[index].threadType
-                                var threadComments = result[index].threadComments.length
-                                var threadUpVotes = (result[index].threadUpVotes.length - result[index].threadDownVotes.length)
-                                var threadTitle =  result[index].threadTitle
-                                var threadSubtitle = result[index].threadSubtitle
-                                var threadTags = result[index].threadTags
-                                var threadCategory = result[index].threadCategory
-                                var threadBody = result[index].threadBody
-                                var threadImageKey = result[index].threadImageKey
-                                var threadImageDescription = result[index].threadImageDescription
-                                var threadNSFW = result[index].threadNSFW
-                                var threadNSFL = result[index].threadNSFL
-                                var datePosted = result[index].datePosted
-                                var creatorDisplayName = data[0].displayName
-                                var creatorName = data[0].name
-                                var creatorImageKey = data[0].profileImageKey
-                                var allowScreenShots = result[index].allowScreenShots
-                                var threadUpVoted = false
-                                var threadDownVoted = false
-                                if (result[index].threadUpVotes.includes(sentuserid)) {
-                                    console.log("Up voted")
-                                    threadUpVoted = true
-                                    allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
-                                    itemsProcessed++;
-                                    if(itemsProcessed === result.length) {
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Posts found",
-                                            data: allThreads
-                                        })
+            User.find({_id: sentuserid}).then(userRequestingThreads => {
+                if (userRequestingThreads.length && !userResult[0].blockedAccounts.includes(userRequestingThreads[0].secondId)) {
+                    var userid = userResult[0]._id
+                    console.log("user id:")
+                    console.log(userid)
+                    Thread.find({creatorId: userid}).then(result => {
+                        if (result.length) {
+                            var allThreads = []
+                            var itemsProcessed = 0;
+                            result.forEach(function (item, index) {
+                                User.find({_id: result[index].creatorId}).then(data => {
+                                    if (data.length) {
+                                        console.log(result)
+                                        var threadType = result[index].threadType
+                                        var threadComments = result[index].threadComments.length
+                                        var threadUpVotes = (result[index].threadUpVotes.length - result[index].threadDownVotes.length)
+                                        var threadTitle =  result[index].threadTitle
+                                        var threadSubtitle = result[index].threadSubtitle
+                                        var threadTags = result[index].threadTags
+                                        var threadCategory = result[index].threadCategory
+                                        var threadBody = result[index].threadBody
+                                        var threadImageKey = result[index].threadImageKey
+                                        var threadImageDescription = result[index].threadImageDescription
+                                        var threadNSFW = result[index].threadNSFW
+                                        var threadNSFL = result[index].threadNSFL
+                                        var datePosted = result[index].datePosted
+                                        var creatorDisplayName = data[0].displayName
+                                        var creatorName = data[0].name
+                                        var creatorImageKey = data[0].profileImageKey
+                                        var allowScreenShots = result[index].allowScreenShots
+                                        var threadUpVoted = false
+                                        var threadDownVoted = false
+                                        if (result[index].threadUpVotes.includes(sentuserid)) {
+                                            console.log("Up voted")
+                                            threadUpVoted = true
+                                            allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
+                                            itemsProcessed++;
+                                            if(itemsProcessed === result.length) {
+                                                res.json({
+                                                    status: "SUCCESS",
+                                                    message: "Posts found",
+                                                    data: allThreads
+                                                })
+                                            }
+                                        } else if (result[index].threadDownVotes.includes(sentuserid)) {
+                                            console.log("Down voted")
+                                            threadDownVoted = true
+                                            allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
+                                            itemsProcessed++;
+                                            if(itemsProcessed === result.length) {
+                                                res.json({
+                                                    status: "SUCCESS",
+                                                    message: "Posts found",
+                                                    data: allThreads
+                                                })
+                                            }
+                                        } else {
+                                            allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
+                                            itemsProcessed++;
+                                            if(itemsProcessed === result.length) {
+                                                res.json({
+                                                    status: "SUCCESS",
+                                                    message: "Posts found",
+                                                    data: allThreads
+                                                })
+                                            }
+                                        }
+                                    } else {
+                                        console.log("A user does not exist but the thread does.")
+                                        console.log(result[index].creatorId)
                                     }
-                                } else if (result[index].threadDownVotes.includes(sentuserid)) {
-                                    console.log("Down voted")
-                                    threadDownVoted = true
-                                    allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
-                                    itemsProcessed++;
-                                    if(itemsProcessed === result.length) {
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Posts found",
-                                            data: allThreads
-                                        })
-                                    }
-                                } else {
-                                    allThreads.push({threadId: result[index]._id, threadComments: threadComments, threadType: threadType, threadUpVotes: threadUpVotes, threadTitle: threadTitle, threadSubtitle: threadSubtitle, threadTags: threadTags, threadCategory: threadCategory, threadBody: threadBody, threadImageKey: threadImageKey, threadImageDescription: threadImageDescription, threadNSFW: threadNSFW, threadNSFL: threadNSFL, datePosted: datePosted, threadUpVoted: threadUpVoted, threadDownVoted: threadDownVoted, creatorDisplayName: creatorDisplayName, creatorName: creatorName, creatorImageKey: creatorImageKey, allowScreenShots: allowScreenShots})
-                                    itemsProcessed++;
-                                    if(itemsProcessed === result.length) {
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Posts found",
-                                            data: allThreads
-                                        })
-                                    }
-                                }
-                            } else {
-                                console.log("A user does not exist but the thread does.")
-                                console.log(result[index].creatorId)
-                            }
-                        })
+                                })
+                            })
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "This user has no thread posts!"
+                            })
+                        }
                     })
                 } else {
                     res.json({
                         status: "FAILED",
-                        message: "This user has no thread posts!"
+                        message: "User not found."
                     })
                 }
             })
@@ -5690,57 +5781,120 @@ router.post('/toggleFollowOfAUser', (req, res) => { // need to add auth and come
         if (userFollowingFound.length) {
             //Check for other user for validity and to make sure they exist
             User.find({secondId: userToFollowPubId}).then(userGettingFollowed => {
-                if (userGettingFollowed.length) {
-                    if (!userGettingFollowed[0].followers.includes(userFollowingFound[0].secondId)) {
-                        //Follow
-                        User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, { $push : {followers: userFollowingFound[0].secondId}}).then(function() {
-                            User.findOneAndUpdate({_id: userId}, { $push : {following: userGettingFollowed[0].secondId}}).then(function() {
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Followed User"
-                                })
-                            }).catch(err => {
-                                console.log(`Error updating ${err}`)
-                                res.json({
-                                    status: "FAILED",
-                                    message: "Error while updating user getting followed."
-                                })
-                            })
-                        }).catch(err => {
-                            console.log(`Error updating: ${err}`)
-                            res.json({
-                                status: "FAILED",
-                                message: "Error while updating user getting followed."
-                            })
-                        })
-                    } else {
-                        //UnFollow
-                        User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, { $pull : {followers: userFollowingFound[0].secondId}}).then(function() {
-                            User.findOneAndUpdate({_id: userId}, { $pull : {following: userGettingFollowed[0].secondId}}).then(function() {
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "UnFollowed User"
-                                })
-                            }).catch(err => {
-                                console.log(`Error updating ${err}`)
-                                res.json({
-                                    status: "FAILED",
-                                    message: "Error while updating user getting followed."
-                                })
-                            })
-                        }).catch(err => {
-                            console.log(`Error updating: ${err}`)
-                            res.json({
-                                status: "FAILED",
-                                message: "Error while updating user getting followed."
-                            })
-                        })
-                    }
-                } else {
+                if (userGettingFollowed[0].blockedAccounts.includes(userFollowingFound[0].secondId)) {
                     res.json({
                         status: "FAILED",
-                        message: "Couldn't find user to follow, this is likely due to a bad passed public id of the user you are following."
+                        message: "User not found."
                     })
+                } else {
+                    if (userGettingFollowed.length) {
+                        if (userGettingFollowed[0].privateAccount == true) {
+                            if (userGettingFollowed[0].followers.includes(userFollowingFound[0].secondId)) {
+                                //UnFollow private account
+                                User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, { $pull : {followers: userFollowingFound[0].secondId}}).then(function() {
+                                    User.findOneAndUpdate({_id: userId}, { $pull : {following: userGettingFollowed[0].secondId}}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "UnFollowed User"
+                                        })
+                                    }).catch(err => {
+                                        console.log(`Error updating ${err}`)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error while updating user getting followed."
+                                        })
+                                    })
+                                }).catch(err => {
+                                    console.log(`Error updating: ${err}`)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error while updating user getting followed."
+                                    })
+                                })
+                            } else {
+                                if (!userGettingFollowed[0].accountFollowRequests.includes(userFollowingFound[0].secondId)) {
+                                    //Request to follow the account
+                                    User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, {$push: {accountFollowRequests: userFollowingFound[0].secondId}}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Requested To Follow User"
+                                        })
+                                    }).catch(err => {
+                                        console.log(`Error updating ${err}`)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error while updating user getting follow requested."
+                                        })
+                                    })
+                                } else {
+                                    //Remove request to follow the account
+                                    User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, {$pull: {accountFollowRequests: userFollowingFound[0].secondId}}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Removed Request To Follow User"
+                                        })
+                                    }).catch(err => {
+                                        console.log(`Error updating ${err}`)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error while updating user losing a follow request."
+                                        })
+                                    })
+                                }
+                            }
+                        } else {
+                            if (!userGettingFollowed[0].followers.includes(userFollowingFound[0].secondId)) {
+                                //Follow
+                                User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, { $push : {followers: userFollowingFound[0].secondId}}).then(function() {
+                                    User.findOneAndUpdate({_id: userId}, { $push : {following: userGettingFollowed[0].secondId}}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Followed User"
+                                        })
+                                    }).catch(err => {
+                                        console.log(`Error updating ${err}`)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error while updating user getting followed."
+                                        })
+                                    })
+                                }).catch(err => {
+                                    console.log(`Error updating: ${err}`)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error while updating user getting followed."
+                                    })
+                                })
+                            } else {
+                                //UnFollow
+                                User.findOneAndUpdate({_id: userGettingFollowed[0]._id}, { $pull : {followers: userFollowingFound[0].secondId}}).then(function() {
+                                    User.findOneAndUpdate({_id: userId}, { $pull : {following: userGettingFollowed[0].secondId}}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "UnFollowed User"
+                                        })
+                                    }).catch(err => {
+                                        console.log(`Error updating ${err}`)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error while updating user getting followed."
+                                        })
+                                    })
+                                }).catch(err => {
+                                    console.log(`Error updating: ${err}`)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "Error while updating user getting followed."
+                                    })
+                                })
+                            }
+                        }
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "Couldn't find user to follow, this is likely due to a bad passed public id of the user you are following."
+                        })
+                    }
                 }
             }).catch(err => {
                 console.log(`Error following user ${err}`)
@@ -5770,19 +5924,54 @@ router.get('/reloadUsersDetails/:usersPubId/:userSearchingPubId', (req, res) => 
     User.find({secondId: usersPubId}).then(userData => {
         if (userData.length) {
             //could do a user search ig but no need really
-            if (userData[0].followers.includes(userSearchingPubId)) {
+            if (userData[0].blockedAccounts.includes(userSearchingPubId)) {
                 res.json({
-                    status: "SUCCESS",
-                    message: "Found",
-                    data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: true}
+                    status: "FAILED",
+                    message: "User not found."
                 })
             } else {
-                res.json({
-                    status: "SUCCESS",
-                    message: "Found",
-                    data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: false}
-                })
-            }          
+                if (userData[0].privateAccount == true) {
+                    if (userData[0].accountFollowRequests.includes(userSearchingPubId)) {
+                        //User has requested to follow this account
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Found",
+                            data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: 'Requested'}
+                        })
+                    } else {
+                        //User has not requested to follow this private account
+                        if (userData[0].followers.includes(userSearchingPubId)) {
+                            // User is following this account
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Found",
+                                data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: true}
+                            })
+                        } else {
+                            //User is not following this private account
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Found",
+                                data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: false}
+                            })
+                        }
+                    }
+                } else {
+                    if (userData[0].followers.includes(userSearchingPubId)) {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Found",
+                            data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: true}
+                        })
+                    } else {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Found",
+                            data: {name: userData[0].name, displayName: userData[0].name, followers: userData[0].followers.length, following: userData[0].following.length, totalLikes: userData[0].totalLikes, profileKey: userData[0].profileImageKey, badges: userData[0].badges, userIsFollowing: false}
+                        })
+                    }    
+                }      
+            }
         } else {
             res.json({
                 status: "FAILED",
@@ -6101,6 +6290,7 @@ router.post('/changepasswordwithverificationcode', (req, res) => {
                     bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
                         if (result) {
                             //Verification code is correct
+                            AccountVerificationCodeCache.del(userID);
                             const saltRounds = 10;
                             bcrypt.hash(newPassword, saltRounds).then(hashedPassword => {
                                 User.findOneAndUpdate({_id: userID}, {password: hashedPassword}).then(result => {
@@ -6150,6 +6340,539 @@ router.post('/changepasswordwithverificationcode', (req, res) => {
             })
         })
     }
+})
+
+router.get('/getuserbyid/:userID', (req, res) => {
+    let {userID} = req.params;
+    userID = userID.toString().trim();
+    User.find({secondId: userID}).then(userFound => {
+        if (userFound.length) {
+            const dataToSend = {displayName: userFound[0].displayName, name: userFound[0].name, profileImageKey: userFound[0].profileImageKey, pubId: userID, privateAccount: userFound[0].privateAccount};
+            res.json({
+                status: "SUCCESS",
+                message: "User found.",
+                data: dataToSend
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user. Please try again."
+        })
+    })  
+})
+
+router.post('/makeaccountprivate', (req, res) => {
+    let {userID} = req.body
+    userID = userID.toString().trim()
+    User.find({_id: userID}).then((userFound) => {
+        if (userFound.length) {
+            // User exists
+            User.findOneAndUpdate({_id: userID}, {privateAccount: true}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Account is now private."
+                })
+            }).catch((error) => {
+                console.log('Error occured while making user private')
+                console.log('User ID: ' + userID)
+                console.log(error)
+                res.json({
+                    status: "FAILED",
+                    message: "Error occured while making account private."
+                })
+            })
+        } else {
+            // User does not exist
+            res.json({
+                status: "FAILED",
+                message: "Account not found."
+            })
+        }
+    }).catch((error) => {
+        console.log('Error finding account')
+        console.log(error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding account"
+        })
+    })
+})
+
+router.post('/makeaccountpublic', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim();
+
+    const makeAccountPublic = () => {
+        User.findOneAndUpdate({_id: userID}, {privateAccount: false}).then(function() {
+            res.json({
+                status: "SUCCESS",
+                message: "Account is now public."
+            })
+        }).catch((error) => {
+            console.log('An error occured while making account with ID: ' + userID + ' public.')
+        })
+    };
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            //User found
+            const userData = userFound[0];
+            const accountsRequestingToFollow = userData.accountFollowRequests
+            if (accountsRequestingToFollow.length) {
+                User.findOneAndUpdate({_id: userID}, {$push: {followers: {$each: accountsRequestingToFollow}}}).then(function() {
+                    User.findOneAndUpdate({_id: userID}, {accountFollowRequests: []}).then(function() {
+                        makeAccountPublic()
+                    }).catch((error) => {
+                        console.log('An error occured while clearing accounts requesting to follow account with ID: ' + userID + ' array.')
+                        console.log(error)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while clearing account follow requests array. Please try again."
+                        })
+                    })
+                }).catch((error) => {
+                    console.log('An error occured while getting users requesting to follow account with ID: ' + userID + ' to follow the account.')
+                    console.log(error)
+                    res.json({
+                        status: "FAILED",
+                        message: "Error occured while getting users with follow requests to follow you. Please try again."
+                    })
+                })
+            } else {
+                makeAccountPublic()
+            }
+        } else {
+            //User not found
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch((error) => {
+        console.log('Error occured while finding user with ID: ' + userID + ' while making their account public.')
+        console.log(error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding account"
+        })
+    })
+})
+
+router.get('/getfollowrequests/:userID', (req, res) => {
+    let userID = req.params.userID;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Found user",
+                data: userFound[0].accountFollowRequests
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Cannot find user"
+            })
+        }
+    }).catch(err => {
+        console.log('Error while getting user info with user ID: ' + userID)
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "Error occured while finding user"
+        })
+    })
+})
+
+router.post('/denyfollowrequest', (req, res) => {
+    let {accountFollowRequestedID, accountFollowRequestDeniedPubID} = req.body;
+    accountFollowRequestedID = accountFollowRequestedID.toString().trim();
+
+    User.find({_id: accountFollowRequestedID}).then(userFound => {
+        if (userFound.length) {
+            if (userFound[0].accountFollowRequests.includes(accountFollowRequestDeniedPubID)) {
+                User.findOneAndUpdate({_id: accountFollowRequestedID}, {$pull: {accountFollowRequests: accountFollowRequestDeniedPubID}}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Request denied."
+                    })
+                }).catch(err => {
+                    console.log('An error occured while denying request to follow user with ID: ' + accountFollowRequestedID + '. Request was made from user with ID: ' + accountFollowRequestDeniedPubID)
+                    console.log(err)
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while denying the follow request."
+                    })
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "Follow request not found."
+                })
+            }
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found"
+            })
+        }
+    }).catch(err => {
+        console.log('Error finding user with ID: ' + accountFollowRequestedID);
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding the user."
+        })
+    })
+})
+
+router.post('/acceptfollowrequest', (req, res) => {
+    let {accountFollowRequestedID, accountFollowRequestAcceptedPubID} = req.body;
+    accountFollowRequestedID = accountFollowRequestedID.toString().trim()
+
+    User.find({_id: accountFollowRequestedID}).then(userFound => {
+        if (userFound.length) {
+            if (userFound[0].accountFollowRequests.includes(accountFollowRequestAcceptedPubID)) {
+                User.findOneAndUpdate({_id: accountFollowRequestedID}, {$push: {followers: accountFollowRequestAcceptedPubID}}).then(function() {
+                    User.findOneAndUpdate({_id: accountFollowRequestedID}, {$pull: {accountFollowRequests: accountFollowRequestAcceptedPubID}}).then(function() {
+                        User.findOneAndUpdate({secondId: accountFollowRequestAcceptedPubID}, {$push: {following: userFound[0].secondId}}).then(function() {
+                            res.json({
+                                status: "SUCCESS",
+                                message: 'Follow request accepted.'
+                            })
+                        }).catch(err => {
+                            console.log('Error while getting user with ID: ' + accountFollowRequestedAcceptedID + ' to follow user with ID: ' + accountFollowRequestedID + ' after they accepted a follow request.')
+                            console.log(err)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while accepting follow request."
+                            })
+                        })
+                    }).catch(err => {
+                        console.log('Error while getting rid of user with ID: ' + accountFollowRequestAcceptedPubID + ' from account follow requests array from user with ID: ' + accountFollowRequestedID)
+                        console.log(err)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while accepting follow request."
+                        })
+                    })
+                }).catch(err => {
+                    console.log('An error occured while getting user with ID: ' + accountFollowRequestAcceptedPubID + ' to follow user with ID: ' + accountFollowRequestedID + ' after they accepted their follow request.')
+                    console.log(err)
+                    res.json({
+                        status: "FAILED",
+                        message: 'An error occured while accepting follow request.'
+                    })
+                })
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "Follow request not found."
+                })
+            }
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(err => {
+        console.log('Error finding user with ID: ' + accountFollowRequestedID);
+        console.log(err)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding the user."
+        })
+    })
+})
+
+router.post('/removefollowerfromaccount', (req, res) => {
+    let {userID, userToRemovePubId} = req.body;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.find({secondId: userToRemovePubId}).then(userToRemoveFound => {
+                if (userToRemoveFound.length) {
+                    User.findOneAndUpdate({_id: userID}, {$pull: {followers: userToRemovePubId}}).then(function() {
+                        User.findOneAndUpdate({secondId: userToRemovePubId}, {$pull: {following: userFound[0].secondId}}).then(function() {
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Follower has been removed."
+                            })
+                        }).catch(error => {
+                            console.log(error)
+                            console.log('An error occured while pulling user with secondId: ' + userFound[0].secondId + ' from following array from user with secondId: ' + userToRemovePubId)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while removing follower. Please try again."
+                            })
+                        })
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while pulling user with secondId: ' + userToRemovePubId + ' from following array of user with ID: ' + userID)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while removing follower. Please try again."
+                        })
+                    })
+                } else {
+                    res.json({
+                        status: "FAILED",
+                        message: "Cannot find user."
+                    })
+                }
+            }).catch(error => {
+                console.log(error)
+                console.log('Error finding user with public ID: ' + userToRemovePubId)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while finding the user. Please try again."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Cannot find user"
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('Error finding user with ID: ' + userID);
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding the user. Please try again."
+        })
+    })
+})
+
+router.post('/blockaccount', (req, res) => {
+    let {userID, userToBlockPubId} = req.body;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.find({secondId: userToBlockPubId}).then(userToBlockFound => {
+                if (userToBlockFound.length) {
+                    User.findOneAndUpdate({_id: userID}, {$pull: {followers: userToBlockPubId}}).then(function() {
+                        User.findOneAndUpdate({secondId: userToBlockPubId}, {$pull: {following: userFound[0].secondId}}).then(function() {
+                            if (userFound[0].blockedAccounts.includes(userToBlockPubId)) {
+                                //User already blocked
+                                res.json({
+                                    status: "SUCCESS",
+                                    message: "User is already blocked"
+                                })
+                            } else {
+                                User.findOneAndUpdate({_id: userID}, {$push: {blockedAccounts: userToBlockPubId}}).then(function() {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Blocked user."
+                                    })
+                                }).catch(error => {
+                                    console.log(error)
+                                    console.log('An error occured while adding user with public ID: ' + userToBlockPubId + ' to blockedAccounts array of user with ID: ' + userID)
+                                })
+                            }
+                        }).catch(error => {
+                            console.log(error)
+                            console.log('An error occured while removing user with public ID: ' + userFound[0].secondId + ' from following array of user with public ID: ' + userToBlockPubId)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while blocking user. Please try again later."
+                            })
+                        })
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while removing user with public ID: ' + userToBlockPubId + ' from followers array of user with ID: ' + userID)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while blocking user. Please try again later."
+                        })
+                    })
+                } else {
+                    res.json({
+                        status: "FAILED",
+                        message: "Cannot find user. Possibly due to a bad public ID passed."
+                    })
+                }
+            }).catch(error => {
+                console.log(error)
+                console.log('Error occured while finding user with secondId: ' + userToBlockPubId)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while finding user."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Cannot find user. Possibly due to a bad ID passed."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('Error occured while finding user with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding user."
+        })
+    })
+})
+
+router.get('/getuserblockedaccounts/:userID', (req, res) => {
+    let {userID} = req.params;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Found blocked accounts",
+                data: userFound[0].blockedAccounts
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Couldn't find user. Possibly due to a bad ID passed."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('An error occured while finding user with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured. Please try again later."
+        })
+    })
+})
+
+router.post('/unblockaccount', (req, res) => {
+    let {userID, userToUnblockPubId} = req.body;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.find({secondId: userToUnblockPubId}).then(userToUnblockFound => {
+                if (userToUnblockFound.length) {
+                    User.findOneAndUpdate({_id: userID}, {$pull: {blockedAccounts: userToUnblockPubId}}).then(function() {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "User has been unblocked."
+                        })
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while getting rid of user with public ID: ' + userToUnblockPubId + ' from blocked accounts array from user with ID: ' + userID)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while updating user. Please try again."
+                        })
+                    })
+                } else {
+                    res.json({
+                        status: "FAILED",
+                        message: "CAnnot find user"
+                    })
+                }
+            }).catch(error => {
+                console.log(error)
+                console.log('Cannot find user with public ID' + userToUnblockPubId)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while finding user."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Cannot find user."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('Cannot fins uer with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding the user."
+        })
+    })
+})
+
+router.post('/enableAlgorithm', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim()
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound) {
+            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: true}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Algorithm has now been enabled."
+                })
+            }).catch(error => {
+                console.log(error)
+                console.log('Error while setting algorithmEnabled to true for user with ID: ' + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while turning on the algorithm."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('Error with finding user with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding user."
+        })
+    })
+})
+
+router.post('/disableAlgorithm', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim()
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound) {
+            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: false}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Algorithm has now been disabled."
+                })
+            }).catch(error => {
+                console.log(error)
+                console.log('Error while setting algorithmEnabled to false for user with ID: ' + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while turning off the algorithm."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('Error with finding user with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding user."
+        })
+    })
 })
 
 module.exports = router;

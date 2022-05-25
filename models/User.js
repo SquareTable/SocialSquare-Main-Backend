@@ -14,6 +14,11 @@ const UserSchema = new Schema({
     status: String,
     profileImageKey: String,
     notificationKeys: Array,
+    bio: String,
+    privateAccount: {type: Boolean, default: false},
+    accountFollowRequests: Array,
+    blockedAccounts: Array,
+    algorithmEnabled: {type: Boolean, default: false},
 });
 
 const User = mongoose.model('User', UserSchema);
