@@ -298,6 +298,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                             //console.log(hasNotViewedPostsWithRequiredFields)
 
                             const sendBack = (allPostsForSendBackInOrder) => {
+                                console.log("Send back function")
                                 res.json({
                                     status: "SUCCESS",
                                     data: allPostsForSendBackInOrder
@@ -373,7 +374,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -392,7 +393,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -413,7 +414,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -433,7 +434,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -454,7 +455,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -539,7 +540,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -558,7 +559,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -578,7 +579,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -598,7 +599,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -619,7 +620,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -692,7 +693,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -737,7 +738,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -780,7 +781,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -800,7 +801,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -820,7 +821,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -840,7 +841,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -861,7 +862,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -881,7 +882,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                             //more than 10
                                             if (postsForResponse.length == 10) {
                                                 sendBack(postsForResponse)
-                                            } else {
+                                            } else if (postsForResponse.length < 10) {
                                                 if (forSendBackItemsProcessed == hasViewedPostsWithRequiredFields.length) {
                                                     sendBack(postsForResponse)
                                                 }
@@ -944,7 +945,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -966,7 +967,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -990,7 +991,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -1013,7 +1014,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -1037,7 +1038,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -1125,7 +1126,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -1147,7 +1148,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -1170,7 +1171,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -1194,7 +1195,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -1218,7 +1219,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -1291,7 +1292,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -1338,7 +1339,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -1383,7 +1384,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                     //more than 10
                                                                     if (postsForResponse.length == 10) {
                                                                         sendBack(postsForResponse)
-                                                                    } else {
+                                                                    } else if (postsForResponse.length < 10) {
                                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                             sendBack(postsForResponse)
                                                                         }
@@ -1406,7 +1407,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                                 //more than 10
                                                                 if (postsForResponse.length == 10) {
                                                                     sendBack(postsForResponse)
-                                                                } else {
+                                                                } else if (postsForResponse.length < 10) {
                                                                     if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                         sendBack(postsForResponse)
                                                                     }
@@ -1429,7 +1430,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                             //more than 10
                                                             if (postsForResponse.length == 10) {
                                                                 sendBack(postsForResponse)
-                                                            } else {
+                                                            } else if (postsForResponse.length < 10) {
                                                                 if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                     sendBack(postsForResponse)
                                                                 }
@@ -1452,7 +1453,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                         //more than 10
                                                         if (postsForResponse.length == 10) {
                                                             sendBack(postsForResponse)
-                                                        } else {
+                                                        } else if (postsForResponse.length < 10) {
                                                             if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                                 sendBack(postsForResponse)
                                                             }
@@ -1476,7 +1477,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                                     //more than 10
                                                     if (postsForResponse.length == 10) {
                                                         sendBack(postsForResponse)
-                                                    } else {
+                                                    } else if (postsForResponse.length < 10) {
                                                         if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                             sendBack(postsForResponse)
                                                         }
@@ -1499,7 +1500,7 @@ router.get('/followerFeed/:idOfUser/:alreadyOnCurrentFeed', (req, res) => {
                                             //more than 10
                                             if (postsForResponse.length == 10) {
                                                 sendBack(postsForResponse)
-                                            } else {
+                                            } else if (postsForResponse.length < 10) {
                                                 if (forSendBackItemsProcessed == hasNotViewedPostsWithRequiredFields.length) {
                                                     sendBack(postsForResponse)
                                                 }
