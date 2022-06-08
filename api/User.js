@@ -6889,4 +6889,32 @@ router.post('/disableAlgorithm', (req, res) => {
     })
 })
 
+router.get('/reloadProfileEssentials/:userId', (req, res) => {
+    let userId = req.params.userId
+
+    User.find({_id: userId}).then(userFound => {
+        if (userFound.length) {
+            let sendBackForReload = userFound[0].slice();
+            //list should include everything that we dont pass back
+            ['secondId', 'password', 'notificationKeys'].forEach(x => delete sendBackForReload[x])
+            res.json({
+                status: "SUCCES",
+                message: "Reload Information Successful.",
+                data: sendBackForReload
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Could not find user."
+            })
+        }
+    }).catch(err => {
+        console.log('Error reloading profile essentials: ' + err)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user."
+        })
+    })
+})
+
 module.exports = router;
