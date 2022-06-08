@@ -9,6 +9,8 @@ require('dotenv').config();
 const fs = require('fs')
 const S3 = require('aws-sdk/clients/s3')
 
+const { generateTwoDigitDate } = require('./../generateTwoDigitDate')
+
 const bucketName = process.env.AWS_BUCKET_NAME
 const region = process.env.AWS_BUCKET_REGION
 const accessKeyId = process.env.AWS_ACCESS_KEY
@@ -141,7 +143,8 @@ router.post('/signup', (req, res) => {
                         })  
                     } else {
                         //Try to create a new user
-                        badges.push("onSignUpBadge");
+                        const twoDigitDate = generateTwoDigitDate()
+                        badges.push({badgeName: "onSignUpBadge", dateRecieved: twoDigitDate});
                         console.log(badges);
                         // password handling
                         const saltRounds = 10;
@@ -6013,7 +6016,8 @@ router.post('/earnSpecialBadge', (req, res) => {
                     })
                 } else {
                     //Badge not earnt
-                    User.findOneAndUpdate({_id: userId}, { $push : {badges: badgeEarnt}}).then(function() {
+                    const twoDigitDate = generateTwoDigitDate()
+                    User.findOneAndUpdate({_id: userId}, { $push : {badges: {badgeName: badgeEarnt, dateRecieved: twoDigitDate}}}).then(function() {
                         res.json({
                             status: "SUCCESS",
                             message: "Badge earnt."
