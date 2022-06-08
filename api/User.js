@@ -6820,7 +6820,7 @@ router.post('/enableAlgorithm', (req, res) => {
     userID = userID.toString().trim()
 
     User.find({_id: userID}).then(userFound => {
-        if (userFound) {
+        if (userFound.length) {
             User.findOneAndUpdate({_id: userID}, {algorithmEnabled: true}).then(function() {
                 res.json({
                     status: "SUCCESS",
@@ -6850,12 +6850,39 @@ router.post('/enableAlgorithm', (req, res) => {
     })
 })
 
+router.get('/getAuthenticationFactorsEnabled/:userID', (req, res) => {
+    let {userID} = req.params;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Authentication factors found.",
+                data: userFound.authenticationFactorsEnabled ? userFound.authenticationFactordEnabled : []
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('An error occured while finding user with ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding the user. Please try again later."
+        })
+    })
+})
+
 router.post('/disableAlgorithm', (req, res) => {
     let {userID} = req.body;
     userID = userID.toString().trim()
 
     User.find({_id: userID}).then(userFound => {
-        if (userFound) {
+        if (userFound.length) {
             User.findOneAndUpdate({_id: userID}, {algorithmEnabled: false}).then(function() {
                 res.json({
                     status: "SUCCESS",
