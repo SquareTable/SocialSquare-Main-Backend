@@ -9,6 +9,8 @@ require('dotenv').config();
 const fs = require('fs')
 const S3 = require('aws-sdk/clients/s3')
 
+const { generateTwoDigitDate } = require('./../generateTwoDigitDate')
+
 const bucketName = process.env.AWS_BUCKET_NAME
 const region = process.env.AWS_BUCKET_REGION
 const accessKeyId = process.env.AWS_ACCESS_KEY
@@ -141,7 +143,8 @@ router.post('/signup', (req, res) => {
                         })  
                     } else {
                         //Try to create a new user
-                        badges.push("onSignUpBadge");
+                        const twoDigitDate = generateTwoDigitDate()
+                        badges.push({badgeName: "onSignUpBadge", dateRecieved: twoDigitDate});
                         console.log(badges);
                         // password handling
                         const saltRounds = 10;
@@ -6013,7 +6016,8 @@ router.post('/earnSpecialBadge', (req, res) => {
                     })
                 } else {
                     //Badge not earnt
-                    User.findOneAndUpdate({_id: userId}, { $push : {badges: badgeEarnt}}).then(function() {
+                    const twoDigitDate = generateTwoDigitDate()
+                    User.findOneAndUpdate({_id: userId}, { $push : {badges: {badgeName: badgeEarnt, dateRecieved: twoDigitDate}}}).then(function() {
                         res.json({
                             status: "SUCCESS",
                             message: "Badge earnt."
@@ -6908,6 +6912,34 @@ router.post('/disableAlgorithm', (req, res) => {
         res.json({
             status: "FAILED",
             message: "An error occured while finding user."
+        })
+    })
+})
+
+router.get('/reloadProfileEssentials/:userId', (req, res) => {
+    let userId = req.params.userId
+
+    User.find({_id: userId}).then(userFound => {
+        if (userFound.length) {
+            let sendBackForReload = userFound[0].slice();
+            //list should include everything that we dont pass back
+            ['secondId', 'password', 'notificationKeys'].forEach(x => delete sendBackForReload[x])
+            res.json({
+                status: "SUCCES",
+                message: "Reload Information Successful.",
+                data: sendBackForReload
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Could not find user."
+            })
+        }
+    }).catch(err => {
+        console.log('Error reloading profile essentials: ' + err)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user."
         })
     })
 })
