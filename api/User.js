@@ -66,6 +66,7 @@ const bcrypt = require('bcrypt');
 // Memory cache for account verification codes
 const NodeCache = require( "node-cache" );
 const AccountVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
+const EmailVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
 
 // Use axios to make HTTP GET requests to random.org to get random base-16 strings for account verification codes
 const axios = require('axios')
@@ -84,6 +85,47 @@ let mailTransporter = nodemailer.createTransport({
       pass: process.env.SMTP_PASSWORD,
     },
 });
+
+function blurEmailFunction(emailToBlur) {
+    // Modified stack overflow answer from https://stackoverflow.com/users/14547938/daniel
+    // Answer link: https://stackoverflow.com/questions/64605601/partially-mask-email-address-javascript
+    // --- Start of blur email code ---
+    let parts = emailToBlur.split("@");
+    let firstPart = parts[0];
+    let secondPart = parts[1];
+    let blur = firstPart.split("");
+    let skip = 2;
+    for (let i = 0; i < blur.length; i += 1) {
+        if (skip > 0) {
+            skip--;
+            continue;
+        }
+        if (skip === 0) {
+            blur[i] = "*";
+            blur[i + 1] = "*";
+            skip = 2;
+            i++;
+        }
+    }
+    let partsOfSecondPart = secondPart.split(".");
+    let firstPartOfSecondPart = partsOfSecondPart[0];
+    let secondPartOfSecondPart = partsOfSecondPart[1];
+    let blurredSecondPart = firstPartOfSecondPart.split("");
+    for (let i = 0; i < blurredSecondPart.length; i += 1) {
+        if (skip > 0) {
+            skip--;
+            continue;
+        }
+        if (skip === 0) {
+            blurredSecondPart[i] = "*";
+            blurredSecondPart[i + 1] = "*";
+            skip = 2;
+            i++;
+        }
+    }
+    let blurredMail = `${blur.join("")}@${blurredSecondPart.join("")}.${secondPartOfSecondPart}`;
+    return blurredMail;
+};
 
 //Signup
 router.post('/signup', (req, res) => {
@@ -218,14 +260,94 @@ router.post('/signin', (req, res) => {
                 //User Exists
 
                 const hashedPassword = data[0].password;
-                bcrypt.compare(password, hashedPassword).then((result) => {
+                bcrypt.compare(password, hashedPassword).then(async (result) => {
                         if (result) {
                             // Password match
-                            res.json({
-                                status: "SUCCESS",
-                                message: "Signin successful",
-                                data: data
-                            })
+                            if (data[0].authenticationFactorsEnabled.includes('Email')) {
+                                try {
+                                    var randomString = await axios.get('https://www.random.org/integers/?num=1&min=1&max=1000000000&col=1&base=16&format=plain&rnd=new')
+                                    randomString = randomString.data.trim();
+                                    console.log('Random string generated: ' + randomString)
+                            
+                                    if (randomString.length != 8) {
+                                        console.log('An error occured while generating random string. The random string that was generated is: ' + randomString)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "An error occured while generating random string. Please try again later."
+                                        })
+                                        return
+                                    }
+                                } catch (error) {
+                                    console.log(error)
+                                    console.log('An error occured while getting a random string.')
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while creating a random string."
+                                    })
+                                    return
+                                }
+
+                                const saltRounds = 10;
+                                try {
+                                    var hashedRandomString = await bcrypt.hash(randomString, saltRounds);
+                                } catch (error) {
+                                    console.log(error)
+                                    console.log('Am error occured while hashing random string.')
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while hashing the random string."
+                                    })
+                                    return
+                                }
+                                const success = EmailVerificationCodeCache.set(data[0].secondId, hashedRandomString);
+                                if (!success) {
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while setting random string."
+                                    })
+                                    return
+                                }
+
+                                var emailData = {
+                                    from: process.env.SMTP_EMAIL,
+                                    to: data[0].MFAEmail,
+                                    subject: "Code to login to your SocialSquare account",
+                                    text: `Someone is trying to login to your account. If this is you, please enter this code into SocialSquare to login: ${randomString}. If you are not trying to login to your account, change your password immediately as someone else knows it.`,
+                                    html: `<p>Someone is trying to login to your account. If this is you, please enter this code into SocialSquare to login: ${randomString}. If you are not trying to login to your account, change your password immediately as someone else knows it.</p>`
+                                };
+
+                                mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
+                                    if(error){
+                                        console.log("Error happened while sending email to user for task: " + task + ". User ID for user was: " + userID);
+                                        console.log("Error type:", error.name);
+                                        console.log("SMTP log:", error.data);
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "Error sending email."
+                                        })
+                                    } else if (response) {
+                                        console.log('Sent random string to user.')
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Email",
+                                            data: {email: blurEmailFunction(data[0].MFAEmail), fromAddress: process.env.SMTP_EMAIL, secondId: data[0].secondId}
+                                        })
+                                    } else {
+                                        console.log('Mail send error object: ' + error);
+                                        console.log('Mail send response object: ' + response);
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "An unexpected error occured while sending email."
+                                        })
+                                    }
+                                });
+                            } else {
+                                res.json({
+                                    status: "SUCCESS",
+                                    message: "Signin successful",
+                                    data: data
+                                })
+                            }
                         } else {
                             res.json({
                                 status: "FAILED",
@@ -6108,43 +6230,7 @@ router.post('/forgottenpasswordaccountusername', (req, res) => {
                     bcrypt.hash(randomString, saltRounds).then(hashedRandomString => {
                         const success = AccountVerificationCodeCache.set(userID, hashedRandomString);
                         if (success) {
-                            // Modified stack overflow answer from https://stackoverflow.com/users/14547938/daniel
-                            // Answer link: https://stackoverflow.com/questions/64605601/partially-mask-email-address-javascript
-                            // --- Start of blur email code ---
-                            let parts = userEmail.split("@");
-                            let firstPart = parts[0];
-                            let secondPart = parts[1];
-                            let blur = firstPart.split("");
-                            let skip = 2;
-                            for (let i = 0; i < blur.length; i += 1) {
-                                if (skip > 0) {
-                                    skip--;
-                                    continue;
-                                }
-                                if (skip === 0) {
-                                    blur[i] = "*";
-                                    blur[i + 1] = "*";
-                                    skip = 2;
-                                    i++;
-                                }
-                            }
-                            let partsOfSecondPart = secondPart.split(".");
-                            let firstPartOfSecondPart = partsOfSecondPart[0];
-                            let secondPartOfSecondPart = partsOfSecondPart[1];
-                            let blurredSecondPart = firstPartOfSecondPart.split("");
-                            for (let i = 0; i < blurredSecondPart.length; i += 1) {
-                                if (skip > 0) {
-                                    skip--;
-                                    continue;
-                                }
-                                if (skip === 0) {
-                                    blurredSecondPart[i] = "*";
-                                    blurredSecondPart[i + 1] = "*";
-                                    skip = 2;
-                                    i++;
-                                }
-                            }
-                            let blurredMail = `${blur.join("")}@${blurredSecondPart.join("")}.${secondPartOfSecondPart}`;
+                            let blurredMail = blurEmailFunction(userEmail)
                             // --- End of blur email code ---
                             var emailData = {
                                 from: process.env.SMTP_EMAIL,
@@ -6166,7 +6252,7 @@ router.post('/forgottenpasswordaccountusername', (req, res) => {
                                     res.json({
                                         status: "SUCCESS",
                                         message: "Email sent to reset password.",
-                                        data: blurredMail
+                                        data: {blurredEmail: blurredMail, fromAddress: process.env.SMTP_EMAIL}
                                     })
                                 } else {
                                     console.log('Mail send error object: ' + error);
@@ -6221,51 +6307,190 @@ router.post('/forgottenpasswordaccountusername', (req, res) => {
 })
 
 router.post('/checkverificationcode', (req, res) => {
-    let {username, verificationCode} = req.body;
-    username = username.toLowerCase().trim();
-    User.find({name: username}).then(userFound => {
-        if (userFound.length) {
-            const userID = userFound[0]._id.toString();
-            const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
-            if (hashedVerificationCode == undefined) {
-                res.json({
-                    status: "FAILED",
-                    message: "Verification code has expired. Please create a new code."
-                })
-            } else {
-                bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
-                    if (result) {
-                        res.json({
-                            status: "SUCCESS",
-                            message: "Verification code is correct."
-                        })
-                    } else {
-                        res.json({
-                            status: "FAILED",
-                            message: "Verification code is incorrect."
-                        })
-                    }
-                }).catch(error => {
-                    console.log(error)
+    let {username, verificationCode, task, getAccountMethod, userID, email, secondId} = req.body;
+
+    if (getAccountMethod == 'username') {
+        username = username.toLowerCase().trim();
+        User.find({name: username}).then(userFound => {
+            if (userFound.length) {
+                const userID = userFound[0]._id.toString();
+                const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
+                if (hashedVerificationCode == undefined) {
                     res.json({
                         status: "FAILED",
-                        message: "Error comparing verification code. Please try again."
+                        message: "Verification code has expired. Please create a new code."
                     })
+                } else {
+                    bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
+                        if (result) {
+                            if (task == 'Check Before Reset Password') {
+                                res.json({
+                                    status: "SUCCESS",
+                                    message: "Verification code is correct."
+                                })
+                            } else {
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Task is not supported."
+                                })
+                            }
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Verification code is incorrect."
+                            })
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                        res.json({
+                            status: "FAILED",
+                            message: "Error comparing verification code. Please try again."
+                        })
+                    })
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "There is no user with that username. Please try again."
                 })
             }
-        } else {
+        }).catch((error) => {
+            console.log(error);
             res.json({
                 status: "FAILED",
-                message: "There is no user with that username. Please try again."
+                message: "Error finding user. Please try again"
             })
-        }
-    }).catch((error) => {
-        console.log(error);
+        })
+    } else if (getAccountMethod == 'userID') {
+        userID = userID.toString().trim();
+
+        User.find({_id: userID}).then(userFound => {
+            if (userFound.length) {
+                const hashedVerificationCode = EmailVerificationCodeCache.get(userID);
+                if (hashedVerificationCode == undefined) {
+                    res.json({
+                        status: "FAILED",
+                        message: "Verification code has expired. Please create a new code."
+                    })
+                } else {
+                    bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
+                        if (result) {
+                            if (task == 'Add Email Multi-Factor Authentication') {
+                                User.findOneAndUpdate({_id: userID}, {$push: {authenticationFactorsEnabled: 'Email'}}).then(function() {
+                                    User.findOneAndUpdate({_id: userID}, {MFAEmail: email}).then(function() {
+                                        res.json({
+                                            status: "SUCCESS",
+                                            message: "Email is now a multi-factor authentication factor for your account."
+                                        })
+                                    }).catch(error => {
+                                        console.log(error)
+                                        console.log('An error occured while setting MFAEmail to an email for user with ID: ' + userID)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "An error occured while setting your email for multi-factor authentication."
+                                        })
+                                    })
+                                }).catch(error => {
+                                    console.log(error)
+                                    console.log('An error occured while adding Email to the list of authentication factors enabled for user with ID: ' + userID)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while adding email to the list of authentication factors enabled for your account. Please try again later."
+                                    })
+                                })
+                            } else {
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Task is not supported."
+                                })
+                            }
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Verification code is incorrect."
+                            })
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                        res.json({
+                            status: "FAILED",
+                            message: "Error comparing verification code. Please try again."
+                        })
+                    })
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "User not found."
+                })
+            }
+        }).catch(error => {
+            console.log(error);
+            console.log('An error occured while finding user with ID: ' + userID)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while finding the user."
+            })
+        })
+    } else if (getAccountMethod == 'secondId') {
+        User.find({secondId: secondId}).then(userFound => {
+            if (userFound.length) {
+                const hashedVerificationCode = EmailVerificationCodeCache.get(secondId);
+                if (hashedVerificationCode == undefined) {
+                    res.json({
+                        status: "FAILED",
+                        message: "Verification code has expired. Please create a new code."
+                    })
+                } else {
+                    bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
+                        if (result) {
+                            if (task == "Verify Email MFA Code") {
+                                res.json({
+                                    status: "SUCCESS",
+                                    message: "Sign in successful",
+                                    data: userFound[0]
+                                })
+                            } else {
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Unsupported task sent."
+                                })
+                            }
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Verification code is incorrect."
+                            })
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while unhashing verification code.')
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while unhashing verification code. Please try again later."
+                        })
+                    })
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "User not found."
+                })
+            }
+       }).catch(error => {
+           console.log(error)
+           console.log('An error occured while finding user with secondId: ' + secondId)
+           res.json({
+               status: "FAILED",
+               message: "An error occured while finding the user. Please try again later."
+           })
+       })
+    } else {
         res.json({
             status: "FAILED",
-            message: "Error finding user. Please try again"
+            message: "getAccountMethod not supported."
         })
-    })
+    }
 })
 
 //ChangePassword
@@ -6863,7 +7088,7 @@ router.get('/getAuthenticationFactorsEnabled/:userID', (req, res) => {
             res.json({
                 status: "SUCCESS",
                 message: "Authentication factors found.",
-                data: userFound.authenticationFactorsEnabled ? userFound.authenticationFactordEnabled : []
+                data: userFound[0].authenticationFactorsEnabled
             })
         } else {
             res.json({
@@ -6921,11 +7146,11 @@ router.get('/reloadProfileEssentials/:userId', (req, res) => {
 
     User.find({_id: userId}).then(userFound => {
         if (userFound.length) {
-            let sendBackForReload = userFound[0].slice();
+            let sendBackForReload = userFound[0];
             //list should include everything that we dont pass back
             ['secondId', 'password', 'notificationKeys'].forEach(x => delete sendBackForReload[x])
             res.json({
-                status: "SUCCES",
+                status: "SUCCESS",
                 message: "Reload Information Successful.",
                 data: sendBackForReload
             })
@@ -6942,6 +7167,173 @@ router.get('/reloadProfileEssentials/:userId', (req, res) => {
             message: "Error finding user."
         })
     })
+})
+
+router.post('/turnOffEmailMultiFactorAuthentication', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.findOneAndUpdate({_id: userID}, {$pull: {authenticationFactorsEnabled: 'Email'}}).then(function() {
+                User.findOneAndUpdate({_id: userID}, {MFAEmail: undefined}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Email multi-factor authentication has been turned off successfully."
+                    })
+                }).catch(error => {
+                    console.log(error)
+                    console.log("An error occured while setting MFAEmail to undefined for user with ID: " + userID)
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured whilwe turning off email multi-factor authentication."
+                    })
+                })
+            }).catch(error => {
+                console.log(error)
+                console.log("An error occured while removing Email from the authenticationFactorsEnabled array for user with ID: " + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while turning off email multi-factor authentication."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log('Error occured while turning off email MFA: ' + error)
+        console.log('The error occured for account with user ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user."
+        })
+    })
+})
+
+router.post('/sendemailverificationcode', async (req, res) => {
+    let {userID, task, getAccountMethod, username, email} = req.body;
+    userID = userID.toString().trim();
+
+    try {
+        var randomString = await axios.get('https://www.random.org/integers/?num=1&min=1&max=1000000000&col=1&base=16&format=plain&rnd=new')
+        randomString = randomString.data.trim();
+        console.log('Random string generated: ' + randomString)
+
+        if (randomString.length != 8) {
+            console.log('An error occured while generating random string. The random string that was generated is: ' + randomString)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while generating random string. Please try again later."
+            })
+            return
+        }
+    } catch (error) {
+        console.log(error)
+        console.log('An error occured while getting a random string.')
+        res.json({
+            status: "FAILED",
+            message: "An error occured while creating a random string."
+        })
+        return
+    }
+
+    if (getAccountMethod == 'userID') {
+
+        User.find({_id: userID}).then(async (userFound) => {
+            if (userFound.length) {
+                const saltRounds = 10;
+                try {
+                    var hashedRandomString = await bcrypt.hash(randomString, saltRounds);
+                } catch (error) {
+                    console.log(error)
+                    console.log('Am error occured while hashing random string.')
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while hashing the random string."
+                    })
+                    return
+                }
+                const success = EmailVerificationCodeCache.set(userID, hashedRandomString);
+                if (!success) {
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while setting random string."
+                    })
+                    return
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "User not found."
+                })
+                return
+            }
+        }).catch(error => {
+            console.log(error)
+            console.log('An error occured while finding user with user ID: ' + userID)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while finding the user."
+            })
+            return
+        })
+
+        if (task == "Add Email Multi-Factor Authentication") {
+            var emailData = {
+                from: process.env.SMTP_EMAIL,
+                to: email,
+                subject: "Add Email as a Multi-Factor Authentication to your SocialSquare account",
+                text: `Your account requested to add email as a factor for multi-factor authentication. Please enter this code into SocialSquare to add email as a factor for multi-factor authentication: ${randomString}. If you did not request this, please change your password as only users who are logged into your account can make this request.`,
+                html: `<p>Your account requested to add email as a factor for multi-factor authentication. Please enter this code into SocialSquare to add email as a factor for multi-factor authentication: ${randomString}. If you did not request this, please change your password as only users who are logged into your account can make this request.</p>`
+            };
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Unknown task sent."
+            })
+            return
+        }
+
+        mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
+            if(error){
+                console.log("Error happened while sending email to user for task: " + task + ". User ID for user was: " + userID);
+                console.log("Error type:", error.name);
+                console.log("SMTP log:", error.data);
+                res.json({
+                    status: "FAILED",
+                    message: "Error sending email."
+                })
+            } else if (response) {
+                console.log('Sent random string to user.')
+                res.json({
+                    status: "SUCCESS",
+                    message: "Email sent.",
+                    data: {email: email, fromAddress: process.env.SMTP_EMAIL}
+                })
+            } else {
+                console.log('Mail send error object: ' + error);
+                console.log('Mail send response object: ' + response);
+                res.json({
+                    status: "FAILED",
+                    message: "An unexpected error occured while sending email."
+                })
+            }
+        });
+
+    } else if (getAccountMethod == "username") {
+        res.json({
+            status: "FAILED",
+            message: "username getAccountMethod is not supported yet. This will be coming soon."
+        })
+    } else {
+        res.json({
+            status: "FAILED",
+            message: "Unrecognized getAccountMethod sent."
+        })
+    }
 })
 
 module.exports = router;

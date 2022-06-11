@@ -19,7 +19,8 @@ const UserSchema = new Schema({
     accountFollowRequests: Array,
     blockedAccounts: Array,
     algorithmEnabled: {type: Boolean, default: false},
-    authenticationFactorsEnabled: {type: Array, default: []}
+    authenticationFactorsEnabled: {type: Array, default: []},
+    MFAEmail: String
 });
 
 const User = mongoose.model('User', UserSchema);
