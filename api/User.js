@@ -3285,101 +3285,110 @@ router.post('/postcategorywithimage', upload.single('image'), async (req, res) =
         console.log('File has been recieved: ', req.file.filename)
         User.find({_id: creatorId}).then(result => {
             if (result.length) {
-                if (categoryNSFW == "true") {
-                    categoryNSFW=true
-                    categoryNSFL = false
-                } else if (categoryNSFL == "true") {
-                    categoryNSFL = true
-                    categoryNSFW = false
-                } else {
-                    categoryNSFW = false
-                    categoryNSFL = false
-                }
-                var currentdate = new Date(); 
-                //
-                var twoDigitDate = ''
-                if (currentdate.getDate() < 10) {
-                    twoDigitDate = '0' + currentdate.getDate()
-                } else {
-                    twoDigitDate = currentdate.getDate()
-                }
-                //
-                var twoDigitMonth = ''
-                var recievedMonth = currentdate.getMonth()+1
-                if (recievedMonth < 10) {
-                    twoDigitMonth = '0' + recievedMonth
-                } else {
-                    twoDigitMonth = recievedMonth
-                }
-                //
-                var twoDigitHour = ''
-                if (currentdate.getHours() < 10) {
-                    twoDigitHour = '0' + currentdate.getHours()
-                } else {
-                    twoDigitHour = currentdate.getHours()
-                }
-                //
-                var twoDigitMinutes = ''
-                if (currentdate.getMinutes() < 10) {
-                    twoDigitMinutes = '0' + currentdate.getMinutes()
-                } else {
-                    twoDigitMinutes = currentdate.getMinutes()
-                }
-                //
-                var twoDigitSeconds = ''
-                if (currentdate.getSeconds() < 10) {
-                    twoDigitSeconds = '0' + currentdate.getSeconds()
-                } else {
-                    twoDigitSeconds = currentdate.getSeconds()
-                }
-                //
-                var datetime = twoDigitDate + "/"
-                + twoDigitMonth  + "/" 
-                + currentdate.getFullYear() + " @ "  
-                + twoDigitHour + ":"  
-                + twoDigitMinutes + ":" 
-                + twoDigitSeconds;
-                //allowScreenShots set up
-                console.log(sentAllowScreenShots)
-                var allowScreenShots = sentAllowScreenShots
-                if (sentAllowScreenShots == true || sentAllowScreenShots == "true") {
-                    console.log("sent allow ss was true")
-                    allowScreenShots = true
-                } else if (sentAllowScreenShots == false || sentAllowScreenShots == "false") {
-                    console.log("sent allow ss was false")
-                    allowScreenShots = false
-                } else {    
-                    console.log("Sent allow ss wasnt true or false so set true")
-                    allowScreenShots = true
-                }
-                console.log(`allowScreenShots ${allowScreenShots}`)
+                Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+                    if (!categoryFound.length) { // category title not already used so allow it
+                        if (categoryNSFW == "true") {
+                            categoryNSFW=true
+                            categoryNSFL = false
+                        } else if (categoryNSFL == "true") {
+                            categoryNSFL = true
+                            categoryNSFW = false
+                        } else {
+                            categoryNSFW = false
+                            categoryNSFL = false
+                        }
+                        var currentdate = new Date(); 
+                        //
+                        var twoDigitDate = ''
+                        if (currentdate.getDate() < 10) {
+                            twoDigitDate = '0' + currentdate.getDate()
+                        } else {
+                            twoDigitDate = currentdate.getDate()
+                        }
+                        //
+                        var twoDigitMonth = ''
+                        var recievedMonth = currentdate.getMonth()+1
+                        if (recievedMonth < 10) {
+                            twoDigitMonth = '0' + recievedMonth
+                        } else {
+                            twoDigitMonth = recievedMonth
+                        }
+                        //
+                        var twoDigitHour = ''
+                        if (currentdate.getHours() < 10) {
+                            twoDigitHour = '0' + currentdate.getHours()
+                        } else {
+                            twoDigitHour = currentdate.getHours()
+                        }
+                        //
+                        var twoDigitMinutes = ''
+                        if (currentdate.getMinutes() < 10) {
+                            twoDigitMinutes = '0' + currentdate.getMinutes()
+                        } else {
+                            twoDigitMinutes = currentdate.getMinutes()
+                        }
+                        //
+                        var twoDigitSeconds = ''
+                        if (currentdate.getSeconds() < 10) {
+                            twoDigitSeconds = '0' + currentdate.getSeconds()
+                        } else {
+                            twoDigitSeconds = currentdate.getSeconds()
+                        }
+                        //
+                        var datetime = twoDigitDate + "/"
+                        + twoDigitMonth  + "/" 
+                        + currentdate.getFullYear() + " @ "  
+                        + twoDigitHour + ":"  
+                        + twoDigitMinutes + ":" 
+                        + twoDigitSeconds;
+                        //allowScreenShots set up
+                        console.log(sentAllowScreenShots)
+                        var allowScreenShots = sentAllowScreenShots
+                        if (sentAllowScreenShots == true || sentAllowScreenShots == "true") {
+                            console.log("sent allow ss was true")
+                            allowScreenShots = true
+                        } else if (sentAllowScreenShots == false || sentAllowScreenShots == "false") {
+                            console.log("sent allow ss was false")
+                            allowScreenShots = false
+                        } else {    
+                            console.log("Sent allow ss wasnt true or false so set true")
+                            allowScreenShots = true
+                        }
+                        console.log(`allowScreenShots ${allowScreenShots}`)
 
-                const newCategory = new Category({
-                    imageKey: req.file.filename,
-                    categoryTitle: categoryTitle, 
-                    categoryDescription: categoryDescription,
-                    categoryTags: categoryTags,
-                    members: [creatorId],
-                    NSFW: categoryNSFW,
-                    NSFL: categoryNSFL,
-                    categoryOwnerId: creatorId,
-                    categoryOriginalCreator: creatorId,
-                    categoryModeratorIds: [],
-                    datePosted: datetime,
-                    allowScreenShots: allowScreenShots
-                });
+                        const newCategory = new Category({
+                            imageKey: req.file.filename,
+                            categoryTitle: categoryTitle, 
+                            categoryDescription: categoryDescription,
+                            categoryTags: categoryTags,
+                            members: [creatorId],
+                            NSFW: categoryNSFW,
+                            NSFL: categoryNSFL,
+                            categoryOwnerId: creatorId,
+                            categoryOriginalCreator: creatorId,
+                            categoryModeratorIds: [],
+                            datePosted: datetime,
+                            allowScreenShots: allowScreenShots
+                        });
 
-                newCategory.save().then(result => {
-                    res.json({
-                        status: "SUCCESS",
-                        message: "Creation successful",
-                    })
-                })
-                .catch(err => {
-                    res.json({
-                        status: "FAILED",
-                        message: "An error occurred while saving category!"
-                    })
+                        newCategory.save().then(result => {
+                            res.json({
+                                status: "SUCCESS",
+                                message: "Creation successful",
+                            })
+                        })
+                        .catch(err => {
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occurred while saving category!"
+                            })
+                        })
+                    } else {
+                        res.json({
+                            status: "FAILED",
+                            message: "A category with this name already exists."
+                        })
+                    }   
                 })
             } else {
                 res.json({
@@ -3468,91 +3477,100 @@ router.post('/postcategorywithoutimage', async (req, res) => {
     let {creatorId, categoryTitle, categoryDescription, categoryTags, categoryNSFW, categoryNSFL, sentAllowScreenShots} = req.body;
     User.find({_id: creatorId}).then(result => {
         if (result.length) {
-            var currentdate = new Date(); 
-            //
-            var twoDigitDate = ''
-            if (currentdate.getDate() < 10) {
-                twoDigitDate = '0' + currentdate.getDate()
-            } else {
-                twoDigitDate = currentdate.getDate()
-            }
-            //
-            var twoDigitMonth = ''
-            var recievedMonth = currentdate.getMonth()+1
-            if (recievedMonth < 10) {
-                twoDigitMonth = '0' + recievedMonth
-            } else {
-                twoDigitMonth = recievedMonth
-            }
-            //
-            var twoDigitHour = ''
-            if (currentdate.getHours() < 10) {
-                twoDigitHour = '0' + currentdate.getHours()
-            } else {
-                twoDigitHour = currentdate.getHours()
-            }
-            //
-            var twoDigitMinutes = ''
-            if (currentdate.getMinutes() < 10) {
-                twoDigitMinutes = '0' + currentdate.getMinutes()
-            } else {
-                twoDigitMinutes = currentdate.getMinutes()
-            }
-            //
-            var twoDigitSeconds = ''
-            if (currentdate.getSeconds() < 10) {
-                twoDigitSeconds = '0' + currentdate.getSeconds()
-            } else {
-                twoDigitSeconds = currentdate.getSeconds()
-            }
-            //
-            var datetime = twoDigitDate + "/"
-            + twoDigitMonth  + "/" 
-            + currentdate.getFullYear() + " @ "  
-            + twoDigitHour + ":"  
-            + twoDigitMinutes + ":" 
-            + twoDigitSeconds;
-            //allowScreenShots set up
-            console.log(sentAllowScreenShots)
-            var allowScreenShots = sentAllowScreenShots
-            if (sentAllowScreenShots == true) {
-                console.log("sent allow ss was true")
-                allowScreenShots = true
-            } else if (sentAllowScreenShots == false) {
-                console.log("sent allow ss was false")
-                allowScreenShots = false
-            } else {    
-                console.log("Sent allow ss wasnt true or false so set true")
-                allowScreenShots = true
-            }
-            console.log(`allowScreenShots ${allowScreenShots}`)
+            Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+                if (!categoryFound.length) { // category title not already used so allow it
+                    var currentdate = new Date(); 
+                    //
+                    var twoDigitDate = ''
+                    if (currentdate.getDate() < 10) {
+                        twoDigitDate = '0' + currentdate.getDate()
+                    } else {
+                        twoDigitDate = currentdate.getDate()
+                    }
+                    //
+                    var twoDigitMonth = ''
+                    var recievedMonth = currentdate.getMonth()+1
+                    if (recievedMonth < 10) {
+                        twoDigitMonth = '0' + recievedMonth
+                    } else {
+                        twoDigitMonth = recievedMonth
+                    }
+                    //
+                    var twoDigitHour = ''
+                    if (currentdate.getHours() < 10) {
+                        twoDigitHour = '0' + currentdate.getHours()
+                    } else {
+                        twoDigitHour = currentdate.getHours()
+                    }
+                    //
+                    var twoDigitMinutes = ''
+                    if (currentdate.getMinutes() < 10) {
+                        twoDigitMinutes = '0' + currentdate.getMinutes()
+                    } else {
+                        twoDigitMinutes = currentdate.getMinutes()
+                    }
+                    //
+                    var twoDigitSeconds = ''
+                    if (currentdate.getSeconds() < 10) {
+                        twoDigitSeconds = '0' + currentdate.getSeconds()
+                    } else {
+                        twoDigitSeconds = currentdate.getSeconds()
+                    }
+                    //
+                    var datetime = twoDigitDate + "/"
+                    + twoDigitMonth  + "/" 
+                    + currentdate.getFullYear() + " @ "  
+                    + twoDigitHour + ":"  
+                    + twoDigitMinutes + ":" 
+                    + twoDigitSeconds;
+                    //allowScreenShots set up
+                    console.log(sentAllowScreenShots)
+                    var allowScreenShots = sentAllowScreenShots
+                    if (sentAllowScreenShots == true) {
+                        console.log("sent allow ss was true")
+                        allowScreenShots = true
+                    } else if (sentAllowScreenShots == false) {
+                        console.log("sent allow ss was false")
+                        allowScreenShots = false
+                    } else {    
+                        console.log("Sent allow ss wasnt true or false so set true")
+                        allowScreenShots = true
+                    }
+                    console.log(`allowScreenShots ${allowScreenShots}`)
 
-            const newCategory = new Category({
-                imageKey: "",
-                categoryTitle: categoryTitle, 
-                categoryDescription: categoryDescription,
-                categoryTags: categoryTags,
-                members: [creatorId],
-                NSFW: categoryNSFW,
-                NSFL: categoryNSFL,
-                categoryOwnerId: creatorId,
-                categoryOriginalCreator: creatorId,
-                categoryModeratorIds: [],
-                datePosted: datetime,
-                allowScreenShots: allowScreenShots
-            });
+                    const newCategory = new Category({
+                        imageKey: "",
+                        categoryTitle: categoryTitle, 
+                        categoryDescription: categoryDescription,
+                        categoryTags: categoryTags,
+                        members: [creatorId],
+                        NSFW: categoryNSFW,
+                        NSFL: categoryNSFL,
+                        categoryOwnerId: creatorId,
+                        categoryOriginalCreator: creatorId,
+                        categoryModeratorIds: [],
+                        datePosted: datetime,
+                        allowScreenShots: allowScreenShots
+                    });
 
-            newCategory.save().then(result => {
-                res.json({
-                    status: "SUCCESS",
-                    message: "Creation successful",
-                })
-            })
-            .catch(err => {
-                res.json({
-                    status: "FAILED",
-                    message: "An error occurred while saving category!"
-                })
+                    newCategory.save().then(result => {
+                        res.json({
+                            status: "SUCCESS",
+                            message: "Creation successful",
+                        })
+                    })
+                    .catch(err => {
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occurred while saving category!"
+                        })
+                    })
+                } else {
+                    res.json({
+                        status: "FAILED",
+                        message: "A category with this name already exists."
+                    })
+                }   
             })
         } else {
             res.json({
