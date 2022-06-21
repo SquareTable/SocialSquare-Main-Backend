@@ -2289,7 +2289,7 @@ router.post('/postImage', upload.single('image'), async (req, res) => {
                         imageCreatorId: creatorId,
                         imageComments: [],
                         datePosted: datetime,
-                        allowScreenShots: allowScreenShots
+                        allowScreenShots: allowScreenShots,
                     });
 
                     newImage.save().then(result => {
@@ -3285,7 +3285,7 @@ router.post('/postcategorywithimage', upload.single('image'), async (req, res) =
         console.log('File has been recieved: ', req.file.filename)
         User.find({_id: creatorId}).then(result => {
             if (result.length) {
-                Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+                Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
                     if (!categoryFound.length) { // category title not already used so allow it
                         if (categoryNSFW == "true") {
                             categoryNSFW=true
@@ -3477,7 +3477,7 @@ router.post('/postcategorywithoutimage', async (req, res) => {
     let {creatorId, categoryTitle, categoryDescription, categoryTags, categoryNSFW, categoryNSFL, sentAllowScreenShots} = req.body;
     User.find({_id: creatorId}).then(result => {
         if (result.length) {
-            Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+            Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
                 if (!categoryFound.length) { // category title not already used so allow it
                     var currentdate = new Date(); 
                     //
@@ -7106,7 +7106,7 @@ router.get('/getAuthenticationFactorsEnabled/:userID', (req, res) => {
             res.json({
                 status: "SUCCESS",
                 message: "Authentication factors found.",
-                data: userFound[0].authenticationFactorsEnabled
+                data: {authenticationFactorsEnabled: userFound[0].authenticationFactorsEnabled, MFAEmail: userFound[0].MFAEmail ? blurEmailFunction(userFound[0].MFAEmail) : null}
             })
         } else {
             res.json({
@@ -7352,6 +7352,13 @@ router.post('/sendemailverificationcode', async (req, res) => {
             message: "Unrecognized getAccountMethod sent."
         })
     }
+})
+
+router.post('/transferfrominstagram', upload.any("images"), (req, res) => {
+    let {email, password} = req.body;
+    console.log(email)
+    console.log(password)
+    res.send(email)
 })
 
 module.exports = router;
