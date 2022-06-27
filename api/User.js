@@ -59,6 +59,7 @@ const Poll = require('./../models/Poll');
 const ImagePost = require('./../models/ImagePost');
 const Category = require('./../models/Category');
 const Thread = require('./../models/Thread')
+const Message = require('./../models/Message')
 
 // Password handler
 const bcrypt = require('bcrypt');
@@ -7354,11 +7355,146 @@ router.post('/sendemailverificationcode', async (req, res) => {
     }
 })
 
-router.post('/transferfrominstagram', upload.any("images"), (req, res) => {
-    let {email, password} = req.body;
-    console.log(email)
-    console.log(password)
-    res.send(email)
+router.post('/deleteaccount', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim();
+    console.log('Trying to delete user with ID: ' + userID)
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.deleteOne({_id: userID}).then(userDeleted => {
+                console.log('Deleted user with ID: ' + userID)
+                if (userDeleted.deletedCount) {
+                    ImagePost.deleteMany({imageCreatorId: userID}).then(function() {
+                        console.log('Deleted all image posts created by user with ID: ' + userID);
+                        Poll.deleteMany({pollCreatorId: userID}).then(function() {
+                            console.log('Deleted all polls created by user with ID: ' + userID);
+                            Thread.deleteMany({creatorId: userID}).then(function() {
+                                console.log('Deleted all threads created by user with ID: ' + userID);
+                                Message.deleteMany({senderId: userID}).then(function() {
+                                    console.log('Deleted all messages sent by user with ID: ' + userID);
+                                    User.find({followers: {$in: [userID]}}).then(usersFollowersFound => {
+                                        if (usersFollowersFound.length) {
+                                            usersFollowersFound.forEach(user => {
+                                                User.findOneAndUpdate({_id: user._id}, {$pull: {followers: userID}}).then(function() {
+                                                    console.log('Removed user ID ' + userID + ' from followers of user ID ' + user._id)
+                                                }).catch(error => {
+                                                    console.log(error)
+                                                    console.log('An error occured while removing user ID ' + userID + ' from followers of user ID ' + user._id)
+                                                })
+                                            })
+                                        }
+                                        User.find({following: {$in: [userID]}}).then(usersFollowingFound => {
+                                            if (usersFollowingFound.length) {
+                                                usersFollowingFound.forEach(user => {
+                                                    User.findOneAndUpdate({_id: user._id}, {$pull: {following: userID}}).then(function() {
+                                                        console.log('Removed user ID ' + userID + ' from following of user ID ' + user._id)
+                                                    }).catch(error => {
+                                                        console.log(error)
+                                                        console.log('An error occured while removing user ID ' + userID + ' from following of user ID ' + user._id)
+                                                    })
+                                                })
+                                            }
+                                            User.find({blockedAccounts: {$in: [userID]}}).then(usersBlockedFound => {
+                                                if (usersBlockedFound.length) {
+                                                    usersBlockedFound.forEach(user => {
+                                                        User.findOneAndUpdate({_id: user._id}, {$pull: {blockedAccounts: userID}}).then(function() {
+                                                            console.log('Removed user ID ' + userID + ' from blocked accounts of user ID ' + user._id)
+                                                        }).catch(error => {
+                                                            console.log(error)
+                                                            console.log('An error occured while removing user ID ' + userID + ' from blocked accounts of user ID ' + user._id)
+                                                        })
+                                                    })
+                                                }
+                                                res.json({
+                                                    status: "SUCCESS",
+                                                    message: "Account deleted."
+                                                })
+                                            }).catch(error => {
+                                                console.log(error)
+                                                console.log('An error occured while finding users who have user ID ' + userID + ' in their blocked accounts.')
+                                                res.json({
+                                                    status: "FAILED",
+                                                    message: "An error occured while finding users who have blocked you"
+                                                })
+                                            })
+                                        }).catch(error => {
+                                            console.log(error)
+                                            console.log('An error occured while finding users who are following user ID ' + userID)
+                                            res.json({
+                                                status: "FAILED",
+                                                message: "An error occured while finding users who you are following"
+                                            })
+                                        })
+                                    }).catch(error => {
+                                        console.log(error)
+                                        console.log('An error occured while finding users who follow user ID ' + userID)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "An error occured while finding users who follow you"
+                                        })
+                                    })
+                                }).catch(error => {
+                                    console.log(error)
+                                    console.log('An error occured while deleting messages sent by user with user ID: ' + userID)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while deleting messages."
+                                    })
+                                })
+                            }).catch(error => {
+                                console.log(error)
+                                console.log('An error occured while deleting threads for user with ID: ' + userID)
+                                res.json({
+                                    status: "FAILED",
+                                    message: "An error occured while deleting threads."
+                                })
+                            })
+                        }).catch(error => {
+                            console.log('Error occured while deleting polls: ' + error)
+                            console.log('The error occured for account with user ID: ' + userID)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while deleting polls."
+                            })
+                        })       
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while deleting image posts for user with user ID: ' + userID)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while deleting image posts."
+                        })
+                    })
+                } else {
+                    console.log('User not deleted.')
+                    res.json({
+                        status: "FAILED",
+                        message: "User not deleted."
+                    })
+                }
+            }).catch(error => {
+                console.log(error)
+                console.log('An error occured while deleting user with user ID: ' + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while deleting user."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log(error)
+        console.log('An error occured while finding user with user ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding user."
+        })
+    })
 })
 
 module.exports = router;
