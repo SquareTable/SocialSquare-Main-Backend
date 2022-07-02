@@ -338,15 +338,17 @@ const options = {
   cert: fs.readFileSync('cert.pem')
 };
 
+/*
 var server = https.createServer(options, app).listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
+*/
 
-/*
+
 var server = app.listen(port, () =>  {
     console.log(`Server running on port ${port}`);
 })
-*/
+
 
 const io = require("socket.io")(server, {
     cors: { origin: "*" }
