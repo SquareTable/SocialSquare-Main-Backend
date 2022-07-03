@@ -382,7 +382,8 @@ router.post('/signin', (req, res) => {
 //Add Notification Device Key
 router.post('/sendnotificationkey', (req, res) => {
     let {idSent, keySent} = req.body;
-    
+    console.log("Notif - idSent: " + idSent)
+    console.log("Notif - keySent: " + keySent)
     //main
     User.find({_id: idSent}).then(userData => {
         if (userData.length) {
