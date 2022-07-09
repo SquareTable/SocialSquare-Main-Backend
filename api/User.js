@@ -2338,7 +2338,18 @@ router.post('/postProfileImage', upload.single('image'), async (req, res) => {
         //check if user exists
         User.find({_id: userId}).then(result => {
             if (result.length) {
-                //todo remove prev if there is one
+                if (result[0].profileImageKey != "") {
+                    //Remove previous profile image if the user already has one
+                    var filepath = path.resolve(process.env.UPLOADED_PATH, result[0].profileImageKey)
+                    fs.unlink(filepath, (err) => {
+                        if (err) {
+                            console.log('An error occured while deleting image with imageKey: ' + result[0].profileImageKey)
+                            console.log(err)
+                        } else {
+                            console.log("Previous profile image deleted")
+                        }
+                    })
+                }
                 User.findOneAndUpdate({_id: userId}, { profileImageKey: req.file.filename }).then(function(){
                     console.log("SUCCESS1")
                     res.json({
@@ -3424,24 +3435,22 @@ router.post('/deleteimage', (req, res) => {
                             var findUser = data[0]
                             if (findUser.imageCreatorId == userId) {
                                 ImagePost.deleteOne({imageKey: imageKey}).then(function(){
-                                    var params = {  Bucket: bucketName, Key: imageKey };
-
-                                    s3.deleteObject(params, function(err, data) {
+                                    var filepath = path.resolve(process.env.UPLOADED_PATH, imageKey)
+                                    fs.unlink(filepath, function(err){
                                         if (err) {
-                                            console.log("Not Deleted")
-                                            console.log(err, err.stack)
+                                            console.log(err)
                                             res.json({
                                                 status: "FAILED",
-                                                message: err
+                                                message: "An error occured while deleting image post."
                                             })
-                                        } else { 
-                                            console.log("Deleted"); //deleted
+                                        } else {
+                                            console.log("File deleted")
                                             res.json({
                                                 status: "SUCCESS",
-                                                message: "Deleted"
+                                                message: "Post was successfully deleted."
                                             })
                                         }
-                                    });
+                                    })
                                 }).catch(err => {
                                     console.log(err)
                                     res.json({
@@ -5273,23 +5282,22 @@ router.post('/deletethread', (req, res) => {
                                     });
                                 } else {
                                     Thread.deleteOne({_id: findUser._id}).then(function(){
-                                        var params = {  Bucket: bucketName, Key: findUser.threadImageKey };
-
-                                        s3.deleteObject(params, function(err, data) {
+                                        let filepath = path.resolve(process.env.UPLOADED_PATH, findUser.threadImageKey);
+                                        fs.unlink(filepath, (err) => {
                                             if (err) {
-                                                console.log(err, err.stack)
+                                                console.log('An error occured while deleting thread image with key: ' + findUser.threadImageKey)
+                                                console.log(err)
                                                 res.json({
                                                     status: "FAILED",
-                                                    message: err
+                                                    message: "Error Deleting"
                                                 })
-                                            } else { 
-                                                console.log(); //deleted
+                                            } else {
                                                 res.json({
                                                     status: "SUCCESS",
                                                     message: "Deleted"
-                                                })
+                                                });
                                             }
-                                        });
+                                        })
                                     }).catch(err => {
                                         console.log(err)
                                         res.json({
@@ -7366,7 +7374,20 @@ router.post('/deleteaccount', (req, res) => {
             User.deleteOne({_id: userID}).then(userDeleted => {
                 console.log('Deleted user with ID: ' + userID)
                 if (userDeleted.deletedCount) {
-                    ImagePost.deleteMany({imageCreatorId: userID}).then(function() {
+                    ImagePost.find({imageCreatorId: userID}).then(images => {
+                        images.map(image => {
+                            ImagePost.deleteOne({_id: image._id}).then(function() {
+                                let filepath = path.resolve(process.env.UPLOADED_PATH, image.imageKey);
+                                fs.unlink(filepath, function(err) {
+                                    if (err) {
+                                        console.log('Error deleting image: ' + err)
+                                    }
+                                })
+                            }).catch(error => {
+                                console.log('Error deleting image with ID: ' + image.imageKey)
+                                console.log(error)
+                            })
+                        })
                         console.log('Deleted all image posts created by user with ID: ' + userID);
                         Poll.deleteMany({pollCreatorId: userID}).then(function() {
                             console.log('Deleted all polls created by user with ID: ' + userID);

@@ -2037,7 +2037,16 @@ app.post('/postGroupIcon', upload.single('image'), async (req, res) => {
                 Conversation.find({_id: conversationId}).then(convoFound => {
                     if (convoFound.length) {
                         if (convoFound[0].members.includes(userId)) {
-                            //todo remove if old
+                            if (convoFound[0].conversationImageKey !== '') {
+                                //Remove old image key
+                                let filepath = path.resolve(process.env.UPLOADED_PATH, convoFound[0].conversationImageKey);
+                                fs.unlink(filepath, (err) => {
+                                    if (err) {
+                                        console.error('An error occured while deleting gorup chat image with key: ' + convoFound[0].conversationImageKey)
+                                        console.error(err)
+                                    }
+                                })
+                            }
                             Conversation.findOneAndUpdate({_id: conversationId}, { conversationImageKey: req.file.filename }).then(function(){
                                 console.log("SUCCESS1")
                                 const serverMessagesId = new ObjectID()
