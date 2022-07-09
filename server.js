@@ -2431,4 +2431,11 @@ app.get("/getImageOnServer/:imageKey", (req, res) => {
             message: "Error getting image from server."
         })
     }
-  });
+});
+
+app.get('/checkIfRealSocialSquareServer', (req, res) => {
+    res.json({
+        status: "SUCCESS",
+        message: "Yes. This is a real SocialSquare server."
+    })
+})
