@@ -2212,12 +2212,20 @@ router.post('/postImage', upload.single('image'), async (req, res) => {
         });
     } else {
         console.log('File has been recieved: ', req.file.filename)
-        if (title == "" || typeof title == 'undefined' || description == "" || typeof description == 'undefined' || creatorId == null || typeof creatorId == 'undefined' ) {
+        if (typeof title !== 'string') {
+            title = ""
+        } 
+        if (typeof description !== 'string') {
+            description = ""
+        }
+        if (creatorId == null || typeof creatorId == 'undefined') {
             res.json({
                 status: "FAILED",
                 message: "Empty values sent."
             })
         } else {
+            title = title.trim()
+            description = description.trim()
             //console.log(file)
             console.log(title)
             console.log(description)

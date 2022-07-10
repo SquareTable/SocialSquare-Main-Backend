@@ -8,4 +8,4 @@ services:
                   - UPLOAD_PATH=/Local-Images
                   - UPLOADED_PATH=/server/Local-Images
             volumes:
-                  - D:/Social-Square/Social-Square-Images:/server/Local-Images
+                  - /Users/sebastianwebster/GitHub/SocialSquareServerImages:/server/Local-Images
