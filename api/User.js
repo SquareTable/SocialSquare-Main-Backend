@@ -7543,4 +7543,29 @@ router.post('/deleteaccount', (req, res) => {
     })
 })
 
+router.get('/checkIfCategoryExists/:categoryTitle', (req, res) => {
+    let categoryTitle = req.params.categoryTitle;
+
+    Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
+        if (categoryFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: true
+            })
+        } else {
+            res.json({
+                status: "SUCCESS",
+                message: false
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while checking if a category existed.')
+        console.error(error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured. Please try again later."
+        })
+    })
+})
+
 module.exports = router;
