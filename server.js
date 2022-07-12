@@ -5,6 +5,7 @@ const app = require('express')();
 const port = process.env.PORT || 3000;
 
 const UserRouter = require('./api/User')
+const TempRouter = require('./api/Temp')
 const ConversationsRouter = require('./api/Conversations')
 const MessagesRouter = require('./api/Messages')
 const PublicApisRouter = require('./api/PublicApis')
@@ -326,6 +327,7 @@ const bodyParser = require('express').json;
 app.use(bodyParser());
 
 app.use('/user', UserRouter)
+app.use('/tempRoute', TempRouter)
 app.use('/conversations', ConversationsRouter)
 app.use('/messages', MessagesRouter)
 app.use('/publicApis', PublicApisRouter)
