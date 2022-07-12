@@ -7086,7 +7086,9 @@ router.post('/enableAlgorithm', (req, res) => {
 
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
-            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: true}).then(function() {
+            let newSettings = userFound[0].settings;
+            newSettings.algorithmSettings.enabled = true;
+            User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
                     message: "Algorithm has now been enabled."
@@ -7148,7 +7150,9 @@ router.post('/disableAlgorithm', (req, res) => {
 
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
-            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: false}).then(function() {
+            let newSettings = userFound[0].settings;
+            newSettings.algorithmSettings.enabled = false;
+            User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
                     message: "Algorithm has now been disabled."
@@ -7564,6 +7568,161 @@ router.get('/checkIfCategoryExists/:categoryTitle', (req, res) => {
         res.json({
             status: "FAILED",
             message: "An error occured. Please try again later."
+        })
+    })
+})
+
+router.post('/uploadNotificationsSettings', (req, res) => {
+    let {notificationSettings, userID} = req.body;
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            let newUserSettings = userFound[0].settings;
+            let newNotificationSettings = newUserSettings.notificationSettings;
+            if (typeof notificationSettings.TextMessages == 'boolean') {
+                newNotificationSettings.TextMessages = notificationSettings.TextMessages;
+            }
+            if (typeof notificationSettings.GainsFollower == 'boolean') {
+                newNotificationSettings.GainsFollower = notificationSettings.GainsFollower;
+            }
+            if (typeof notificationSettings.FollowRequests == 'boolean') {
+                newNotificationSettings.FollowRequests = notificationSettings.FollowRequests;
+            }
+            if (typeof notificationSettings.UpvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.UpvotesOnMultimediaPosts = notificationSettings.UpvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.NeutralVotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.NeutralVotesOnMultimediaPosts = notificationSettings.NeutralVotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.DownvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.DownvotesOnMultimediaPosts = notificationSettings.DownvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.UpvotesOnVideos == 'boolean') {
+                newNotificationSettings.UpvotesOnVideos = notificationSettings.UpvotesOnVideos;
+            }
+            if (typeof notificationSettings.NeutralVotesOnVideos == 'boolean') {
+                newNotificationSettings.NeutralVotesOnVideos = notificationSettings.NeutralVotesOnVideos;
+            }
+            if (typeof notificationSettings.DownvotesOnVideos == 'boolean') {
+                newNotificationSettings.DownvotesOnVideos = notificationSettings.DownvotesOnVideos;
+            }
+            if (typeof notificationSettings.UpvotesOnPolls == 'boolean') {
+                newNotificationSettings.UpvotesOnPolls = notificationSettings.UpvotesOnPolls;
+            }
+            if (typeof notificationSettings.NeutralVotesOnPolls == 'boolean') {
+                newNotificationSettings.NeutralVotesOnPolls = notificationSettings.NeutralVotesOnPolls;
+            }
+            if (typeof notificationSettings.DownvotesOnPolls == 'boolean') {
+                newNotificationSettings.DownvotesOnPolls = notificationSettings.DownvotesOnPolls;
+            }
+            if (typeof notificationSettings.UpvotesOnThreads == 'boolean') {
+                newNotificationSettings.UpvotesOnThreads = notificationSettings.UpvotesOnThreads;
+            }
+            if (typeof notificationSettings.NeutralVotesOnThreads == 'boolean') {
+                newNotificationSettings.NeutralVotesOnThreads = notificationSettings.NeutralVotesOnThreads;
+            }
+            if (typeof notificationSettings.DownvotesOnThreads == 'boolean') {
+                newNotificationSettings.DownvotesOnThreads = notificationSettings.DownvotesOnThreads;
+            }
+            if (typeof notificationSettings.PersonJoiningCategory == 'boolean') {
+                newNotificationSettings.PersonJoiningCategory = notificationSettings.PersonJoiningCategory;
+            }
+            if (typeof notificationSettings.SendTextMessages == 'boolean') {
+                newNotificationSettings.SendTextMessages = notificationSettings.SendTextMessages;
+            }
+            if (typeof notificationSettings.SendGainsFollower == 'boolean') {
+                newNotificationSettings.SendGainsFollower = notificationSettings.SendGainsFollower;
+            }
+            if (typeof notificationSettings.SendFollowRequests == 'boolean') {
+                newNotificationSettings.SendFollowRequests = notificationSettings.SendFollowRequests;
+            }
+            if (typeof notificationSettings.SendUpvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendUpvotesOnMultimediaPosts = notificationSettings.SendUpvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnMultimediaPosts = notificationSettings.SendNeutralVotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendDownvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendDownvotesOnMultimediaPosts = notificationSettings.SendDownvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendUpvotesOnVideos == 'boolean') {
+                newNotificationSettings.SendUpvotesOnVideos = notificationSettings.SendUpvotesOnVideos;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnVideos == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnVideos = notificationSettings.SendNeutralVotesOnVideos;
+            }
+            if (typeof notificationSettings.SendDownvotesOnVideos == 'boolean') {
+                newNotificationSettings.SendDownvotesOnVideos = notificationSettings.SendDownvotesOnVideos;
+            }
+            if (typeof notificationSettings.SendUpvotesOnPolls == 'boolean') {
+                newNotificationSettings.SendUpvotesOnPolls = notificationSettings.SendUpvotesOnPolls;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnPolls == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnPolls = notificationSettings.SendNeutralVotesOnPolls;
+            }
+            if (typeof notificationSettings.SendDownvotesOnPolls == 'boolean') {
+                newNotificationSettings.SendDownvotesOnPolls = notificationSettings.SendDownvotesOnPolls;
+            }
+            if (typeof notificationSettings.SendUpvotesOnThreads == 'boolean') {
+                newNotificationSettings.SendUpvotesOnThreads = notificationSettings.SendUpvotesOnThreads;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnThreads == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnThreads = notificationSettings.SendNeutralVotesOnThreads;
+            }
+            if (typeof notificationSettings.SendDownvotesOnThreads == 'boolean') {
+                newNotificationSettings.SendDownvotesOnThreads = notificationSettings.SendDownvotesOnThreads;
+            }
+            if (typeof notificationSettings.SendJoiningCategory == 'boolean') {
+                newNotificationSettings.SendJoiningCategory = notificationSettings.SendJoiningCategory;
+            }
+            newUserSettings.notificationSettings = newNotificationSettings;
+
+            User.findOneAndUpdate({_id: userID}, {settings: newUserSettings}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Notification settings updated successfully."
+                })
+            }).catch(error => {
+                console.error('An error occured while changing notification settings for user with ID: ' + userID);
+                console.error('This is the error: ' + error)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while updating notification settings."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+    })
+})
+
+router.get('/getUserNotificationSettings/:userID', (req, res) => {
+    const userID = req.params.userID;
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Notification settings retrieved successfully.",
+                data: userFound[0].settings.notificationSettings
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while getting notification settings. Please try again later."
         })
     })
 })
