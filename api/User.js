@@ -7727,4 +7727,79 @@ router.get('/getUserNotificationSettings/:userID', (req, res) => {
     })
 })
 
+router.get('/getUserAlgorithmSettings/:userID', (req, res) => {
+    const userID = req.params.userID;
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Algorithm settings retrieved successfully.",
+                data: userFound[0].settings.algorithmSettings
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while getting algorithm settings. Please try again later."
+        })
+    })
+})
+
+router.post('/uploadAlgorithmSettings', (req, res) => {
+    const {userID, algorithmSettings} = req.body;
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            let newUserSettings = userFound[0].settings;
+            let newAlgorithmSettings = newUserSettings.algorithmSettings;
+            if (typeof algorithmSettings.algorithmEnabled == 'boolean') {
+                newAlgorithmSettings.algorithmEnabled = algorithmSettings.algorithmEnabled;
+            }
+            if (typeof algorithmSettings.useUserUpvoteData == 'boolean') {
+                newAlgorithmSettings.useUserUpvoteData = algorithmSettings.useUserUpvoteData;
+            }
+            if (typeof algorithmSettings.useUserDownvoteData == 'boolean') {
+                newAlgorithmSettings.useUserDownvoteData = algorithmSettings.useUserDownvoteData;
+            }
+            if (typeof algorithmSettings.useUserFollowingData == 'boolean') {
+                newAlgorithmSettings.useUserFollowingData = algorithmSettings.useUserFollowingData;
+            }
+            newUserSettings.algorithmSettings = newAlgorithmSettings;
+
+            User.findOneAndUpdate({_id: userID}, {settings: newUserSettings}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Algorithm settings updated successfully."
+                })
+            }).catch(error => {
+                console.error('An error occured while changing algorithm settings for user with ID: ' + userID);
+                console.error('This is the error: ' + error)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while updating algorithm settings."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while trying to find the user. Please try again later."
+        })
+    })
+})
+
 module.exports = router;

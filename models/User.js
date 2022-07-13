@@ -56,7 +56,10 @@ const UserSchema = new Schema({
             SendJoiningCategory: true
         },
         algorithmSettings: {
-            enabled: false
+            enabled: false,
+            useUserUpvoteData: false,
+            useUserDownvoteData: false,
+            useUserFollowingData: false
         }
     }}
 });
