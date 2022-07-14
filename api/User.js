@@ -7087,7 +7087,7 @@ router.post('/enableAlgorithm', (req, res) => {
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
             let newSettings = userFound[0].settings;
-            newSettings.algorithmSettings.enabled = true;
+            newSettings.algorithmSettings.algorithmEnabled = true;
             User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
@@ -7151,7 +7151,7 @@ router.post('/disableAlgorithm', (req, res) => {
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
             let newSettings = userFound[0].settings;
-            newSettings.algorithmSettings.enabled = false;
+            newSettings.algorithmSettings.algorithmEnabled = false;
             User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
