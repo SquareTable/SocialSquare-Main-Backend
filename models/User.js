@@ -14,6 +14,7 @@ const UserSchema = new Schema({
     status: String,
     profileImageKey: String,
     notificationKeys: Array,
+    refreshTokens: Array,
     bio: String,
     privateAccount: {type: Boolean, default: false},
     accountFollowRequests: Array,

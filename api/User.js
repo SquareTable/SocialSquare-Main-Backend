@@ -78,16 +78,16 @@ require('dotenv').config();
 
 //Web Token Stuff
 
-const { tokenValidation } = require("../middleware/TokenValidation");
+const { tokenValidation, refreshTokenEncryption, refreshTokenDecryption } = require("../middleware/TokenHandler");
 
 //router.all("*", [tokenValidation]); // the * just makes it that it affects them all it could be /whatever and it would affect that only
 
 function generateAuthJWT(toSign) { //to sign should be something like a user name or user id
-    return jwt.sign({toSign}, process.env.SECRET_FOR_TOKENS, {expiresIn: "30s"}) //900s is 15 minutes
+    return jwt.sign({_id: toSign}, process.env.SECRET_FOR_TOKENS, {expiresIn: "30s"}) //900s is 15 minutes
 }
 
 function generateRefreshToken(toSign) {
-    return jwt.sign({toSign}, process.env.SECRET_FOR_TOKENS, {expiresIn: "900s"}) //900s is 15 minutes
+    return jwt.sign({_id: toSign}, process.env.SECRET_FOR_TOKENS, {expiresIn: "900s"}) //900s is 15 minutes
 }
 
 // Use nodemailer for sending emails to users
@@ -225,12 +225,15 @@ router.post('/signup', (req, res) => {
                             newUser.save().then(result => {
                                 const token = generateAuthJWT(result._id);
                                 const refreshToken = generateRefreshToken(result._id);
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Signup successful",
-                                    data: result,
-                                    token: token,
-                                    refreshToken: refreshToken
+                                const encryptedRefreshToken = refreshTokenEncryption(refreshToken)
+                                User.findOneAndUpdate({_id: result._id}, {$push: {refreshTokens: encryptedRefreshToken}}).then(() => {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "SignUp successful",
+                                        data: data,
+                                        token: `Bearer ${token}`,
+                                        refreshToken: `Bearer ${refreshToken}`
+                                    })
                                 })
                             })
                             .catch(err => {
@@ -352,8 +355,8 @@ router.post('/signin', (req, res) => {
                                             status: "SUCCESS",
                                             message: "Email",
                                             data: {email: blurEmailFunction(data[0].MFAEmail), fromAddress: process.env.SMTP_EMAIL, secondId: data[0].secondId},
-                                            token: "",
-                                            refreshToken: ""
+                                            token: `Bearer ${token}`,
+                                            refreshToken: `Bearer ${refreshToken}`
                                         })
                                     } else {
                                         console.log('Mail send error object: ' + error);
@@ -365,14 +368,17 @@ router.post('/signin', (req, res) => {
                                     }
                                 });
                             } else {
-                                const token = generateAuthJWT(result._id);
-                                const refreshToken = generateRefreshToken(result._id);
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Signin successful",
-                                    data: data,
-                                    token: token,
-                                    refreshToken: refreshToken
+                                const token = generateAuthJWT(data[0]._id);
+                                const refreshToken = generateRefreshToken(data[0]._id);
+                                const encryptedRefreshToken = refreshTokenEncryption(refreshToken)
+                                User.findOneAndUpdate({_id: data[0]._id}, {$push: {refreshTokens: encryptedRefreshToken}}).then(() => {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Signin successful",
+                                        data: data,
+                                        token: `Bearer ${token}`,
+                                        refreshToken: `Bearer ${refreshToken}`
+                                    })
                                 })
                             }
                         } else {
@@ -383,6 +389,7 @@ router.post('/signin', (req, res) => {
                         }
                     })
                     .catch(err => {
+                        console.log(err)
                         res.json({
                             status: "FAILED",
                             message: "An error occured while comparing passwords!"
@@ -403,43 +410,6 @@ router.post('/signin', (req, res) => {
                 })
         })
     }
-})
-
-router.post('/jwtRefresh', (req, res) => { //Might not be an ideal method so look into it
-    const refreshToken = req.header("auth-refresh-token");
-    
-    jwt.verify(refreshToken, process.env.SECRET_FOR_TOKENS, (err, decoded) => {
-        if (err) {
-            res.json({
-                status: "FAILED",
-                message: "Issue with refresh token may be incorrect or expired."
-            })
-        } else {
-            console.log(decoded)
-            User.find({_id: decoded.toSend}).then(userFoundWithTokensId => {
-                if (userFoundWithTokensId.length) {
-                    //do some type of checking
-                    const token = generateAuthJWT(userFoundWithTokensId._id);
-                    res.json({
-                        status: "SUCCESS",
-                        message: "New token generated",
-                        token: `Bearer ${token}`
-                    })
-                } else {
-                    res.json({
-                        status: "FAILED",
-                        message: "Couldn't find the user with the token provided."
-                    })
-                }
-            }).catch(err => {
-                console.log(`Error occured when finding user with the token: ${err}`)
-                res.json({
-                    status: "FAILED",
-                    message: "An error occured while finding out who you are with the token supplied."
-                })
-            })
-        }
-    })
 })
 
 router.post('/checkusernameavailability', (req, res) => {
@@ -714,14 +684,17 @@ router.post('/checkverificationcode', (req, res) => {
                     bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
                         if (result) {
                             if (task == "Verify Email MFA Code") {
-                                const token = generateAuthJWT(result._id);
-                                const refreshToken = generateRefreshToken(result._id);
-                                res.json({
-                                    status: "SUCCESS",
-                                    message: "Sign in successful",
-                                    data: userFound[0],
-                                    token: token,
-                                    refreshToken: refreshToken
+                                const token = generateAuthJWT(data[0]._id);
+                                const refreshToken = generateRefreshToken(data[0]._id);
+                                const encryptedRefreshToken = refreshTokenEncryption(refreshToken)
+                                User.findOneAndUpdate({_id: data[0]._id}, {$push: {refreshTokens: encryptedRefreshToken}}).then(() => {
+                                    res.json({
+                                        status: "SUCCESS",
+                                        message: "Signin successful",
+                                        data: data,
+                                        token: `Bearer ${token}`,
+                                        refreshToken: `Bearer ${refreshToken}`
+                                    })
                                 })
                             } else {
                                 res.json({
