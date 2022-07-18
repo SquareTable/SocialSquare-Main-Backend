@@ -11,7 +11,8 @@ const ImageSchema = new Schema({
     imageComments: Array,
     datePosted: String,
     allowScreenShots: Boolean,
-    viewedBy: Array
+    viewedBy: Array,
+    uploadedFrom: {type: String, default: 'SocialSquare'}
 });
 
 const ImagePost = mongoose.model('ImagePost', ImageSchema);

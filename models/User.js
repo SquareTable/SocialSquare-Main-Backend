@@ -18,8 +18,50 @@ const UserSchema = new Schema({
     privateAccount: {type: Boolean, default: false},
     accountFollowRequests: Array,
     blockedAccounts: Array,
-    algorithmEnabled: {type: Boolean, default: false},
-    authenticationFactorsEnabled: {type: Array, default: []}
+    authenticationFactorsEnabled: {type: Array, default: []},
+    MFAEmail: String,
+    settings: {type: Object, default: {
+        notificationSettings: {
+            TextMessages: true,
+            GainsFollower: true,
+            FollowRequests: true,
+            UpvotesOnMultimediaPosts: true,
+            NeutralVotesOnMultimediaPosts: true,
+            DownvotesOnMultimediaPosts: true,
+            UpvotesOnVideos: true,
+            NeutralVotesOnVideos: true,
+            DownvotesOnVideos: true,
+            UpvotesOnPolls: true,
+            NeutralVotesOnPolls: true,
+            DownvotesOnPolls: true,
+            UpvotesOnThreads: true,
+            NeutralVotesOnThreads: true,
+            DownvotesOnThreads: true,
+            PersonJoiningCategory: true,
+            SendTextMessages: true,
+            SendGainsFollower: true,
+            SendFollowRequests: true,
+            SendUpvotesOnMultimediaPosts: true,
+            SendNeutralVotesOnMultimediaPosts: true,
+            SendDownvotesOnMultimediaPosts: true,
+            SendUpvotesOnVideos: true,
+            SendNeutralVotesOnVideos: true,
+            SendDownvotesOnVideos: true,
+            SendUpvotesOnPolls: true,
+            SendNeutralVotesOnPolls: true,
+            SendDownvotesOnPolls: true,
+            SendUpvotesOnThreads: true,
+            SendNeutralVotesOnThreads: true,
+            SendDownvotesOnThreads: true,
+            SendJoiningCategory: true
+        },
+        algorithmSettings: {
+            enabled: false,
+            useUserUpvoteData: false,
+            useUserDownvoteData: false,
+            useUserFollowingData: false
+        }
+    }}
 });
 
 const User = mongoose.model('User', UserSchema);

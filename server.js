@@ -333,9 +333,24 @@ app.use('/messages', MessagesRouter)
 app.use('/publicApis', PublicApisRouter)
 app.use('/feed', FeedRouter)
 
+const https = require('https');
+
+const options = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
+
+/*
+var server = https.createServer(options, app).listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});
+*/
+
+
 var server = app.listen(port, () =>  {
     console.log(`Server running on port ${port}`);
 })
+
 
 const io = require("socket.io")(server, {
     cors: { origin: "*" }
@@ -2024,7 +2039,16 @@ app.post('/postGroupIcon', upload.single('image'), async (req, res) => {
                 Conversation.find({_id: conversationId}).then(convoFound => {
                     if (convoFound.length) {
                         if (convoFound[0].members.includes(userId)) {
-                            //todo remove if old
+                            if (convoFound[0].conversationImageKey !== '') {
+                                //Remove old image key
+                                let filepath = path.resolve(process.env.UPLOADED_PATH, convoFound[0].conversationImageKey);
+                                fs.unlink(filepath, (err) => {
+                                    if (err) {
+                                        console.error('An error occured while deleting gorup chat image with key: ' + convoFound[0].conversationImageKey)
+                                        console.error(err)
+                                    }
+                                })
+                            }
                             Conversation.findOneAndUpdate({_id: conversationId}, { conversationImageKey: req.file.filename }).then(function(){
                                 console.log("SUCCESS1")
                                 const serverMessagesId = new ObjectID()
@@ -2409,4 +2433,11 @@ app.get("/getImageOnServer/:imageKey", (req, res) => {
             message: "Error getting image from server."
         })
     }
-  });
+});
+
+app.get('/checkIfRealSocialSquareServer', (req, res) => {
+    res.json({
+        status: "SUCCESS",
+        message: "Yes. This is a real SocialSquare server."
+    })
+})
