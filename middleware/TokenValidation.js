@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken')
 
 function tokenValidation(req, res, next) {
-    /*
-    const authHeader = req.headers["refresh-token"];
+    const authHeader = req.headers["auth-web-token"];
     const token = authHeader && authHeader.split(" ")[1];
 
     if (token == null) return res.sendStatus(401);
@@ -15,7 +14,6 @@ function tokenValidation(req, res, next) {
             next();
         }
     })
-    */
     next();
 }
 

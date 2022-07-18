@@ -100,7 +100,8 @@ const { sendNotifications } = require("../notificationHandler")
 //Add Notification Device Key
 router.post('/sendnotificationkey', (req, res) => {
     let {idSent, keySent} = req.body;
-    
+    console.log("Notif - idSent: " + idSent)
+    console.log("Notif - keySent: " + keySent)
     //main
     User.find({_id: idSent}).then(userData => {
         if (userData.length) {
@@ -1929,12 +1930,20 @@ router.post('/postImage', upload.single('image'), async (req, res) => {
         });
     } else {
         console.log('File has been recieved: ', req.file.filename)
-        if (title == "" || typeof title == 'undefined' || description == "" || typeof description == 'undefined' || creatorId == null || typeof creatorId == 'undefined' ) {
+        if (typeof title !== 'string') {
+            title = ""
+        } 
+        if (typeof description !== 'string') {
+            description = ""
+        }
+        if (creatorId == null || typeof creatorId == 'undefined') {
             res.json({
                 status: "FAILED",
                 message: "Empty values sent."
             })
         } else {
+            title = title.trim()
+            description = description.trim()
             //console.log(file)
             console.log(title)
             console.log(description)
@@ -2008,7 +2017,7 @@ router.post('/postImage', upload.single('image'), async (req, res) => {
                         imageCreatorId: creatorId,
                         imageComments: [],
                         datePosted: datetime,
-                        allowScreenShots: allowScreenShots
+                        allowScreenShots: allowScreenShots,
                     });
 
                     newImage.save().then(result => {
@@ -2055,7 +2064,18 @@ router.post('/postProfileImage', upload.single('image'), async (req, res) => {
         //check if user exists
         User.find({_id: userId}).then(result => {
             if (result.length) {
-                //todo remove prev if there is one
+                if (result[0].profileImageKey != "") {
+                    //Remove previous profile image if the user already has one
+                    var filepath = path.resolve(process.env.UPLOADED_PATH, result[0].profileImageKey)
+                    fs.unlink(filepath, (err) => {
+                        if (err) {
+                            console.log('An error occured while deleting image with imageKey: ' + result[0].profileImageKey)
+                            console.log(err)
+                        } else {
+                            console.log("Previous profile image deleted")
+                        }
+                    })
+                }
                 User.findOneAndUpdate({_id: userId}, { profileImageKey: req.file.filename }).then(function(){
                     console.log("SUCCESS1")
                     res.json({
@@ -3004,7 +3024,7 @@ router.post('/postcategorywithimage', upload.single('image'), async (req, res) =
         console.log('File has been recieved: ', req.file.filename)
         User.find({_id: creatorId}).then(result => {
             if (result.length) {
-                Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+                Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
                     if (!categoryFound.length) { // category title not already used so allow it
                         if (categoryNSFW == "true") {
                             categoryNSFW=true
@@ -3141,24 +3161,22 @@ router.post('/deleteimage', (req, res) => {
                             var findUser = data[0]
                             if (findUser.imageCreatorId == userId) {
                                 ImagePost.deleteOne({imageKey: imageKey}).then(function(){
-                                    var params = {  Bucket: bucketName, Key: imageKey };
-
-                                    s3.deleteObject(params, function(err, data) {
+                                    var filepath = path.resolve(process.env.UPLOADED_PATH, imageKey)
+                                    fs.unlink(filepath, function(err){
                                         if (err) {
-                                            console.log("Not Deleted")
-                                            console.log(err, err.stack)
+                                            console.log(err)
                                             res.json({
                                                 status: "FAILED",
-                                                message: err
+                                                message: "An error occured while deleting image post."
                                             })
-                                        } else { 
-                                            console.log("Deleted"); //deleted
+                                        } else {
+                                            console.log("File deleted")
                                             res.json({
                                                 status: "SUCCESS",
-                                                message: "Deleted"
+                                                message: "Post was successfully deleted."
                                             })
                                         }
-                                    });
+                                    })
                                 }).catch(err => {
                                     console.log(err)
                                     res.json({
@@ -3196,7 +3214,7 @@ router.post('/postcategorywithoutimage', async (req, res) => {
     let {creatorId, categoryTitle, categoryDescription, categoryTags, categoryNSFW, categoryNSFL, sentAllowScreenShots} = req.body;
     User.find({_id: creatorId}).then(result => {
         if (result.length) {
-            Category.find({categoryTitle: categoryTitle}).then(categoryFound => {
+            Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
                 if (!categoryFound.length) { // category title not already used so allow it
                     var currentdate = new Date(); 
                     //
@@ -4990,23 +5008,22 @@ router.post('/deletethread', (req, res) => {
                                     });
                                 } else {
                                     Thread.deleteOne({_id: findUser._id}).then(function(){
-                                        var params = {  Bucket: bucketName, Key: findUser.threadImageKey };
-
-                                        s3.deleteObject(params, function(err, data) {
+                                        let filepath = path.resolve(process.env.UPLOADED_PATH, findUser.threadImageKey);
+                                        fs.unlink(filepath, (err) => {
                                             if (err) {
-                                                console.log(err, err.stack)
+                                                console.log('An error occured while deleting thread image with key: ' + findUser.threadImageKey)
+                                                console.log(err)
                                                 res.json({
                                                     status: "FAILED",
-                                                    message: err
+                                                    message: "Error Deleting"
                                                 })
-                                            } else { 
-                                                console.log(); //deleted
+                                            } else {
                                                 res.json({
                                                     status: "SUCCESS",
                                                     message: "Deleted"
-                                                })
+                                                });
                                             }
-                                        });
+                                        })
                                     }).catch(err => {
                                         console.log(err)
                                         res.json({
@@ -5808,6 +5825,7 @@ router.post('/toggleFollowOfAUser', (req, res) => { // need to add auth and come
     })
 })
 
+
 router.get('/reloadUsersDetails/:usersPubId/:userSearchingPubId', (req, res) => {
     let usersPubId = req.params.usersPubId
     let userSearchingPubId = req.params.userSearchingPubId
@@ -5924,311 +5942,6 @@ router.post('/earnSpecialBadge', (req, res) => {
         res.json({
             status: "FAILED",
             message: "Wrong badge was given."
-        })
-    }
-})
-
-router.post('/checkusernameavailability', (req, res) => {
-    let {username} = req.body;
-    if (username == null) {
-        res.json({
-            status: "FAILED",
-            message: "Username has not been provided"
-        })
-    } else if (username.length < 1) {
-        res.json({
-            status: "FAILED",
-            message: "Username cannot be blank"
-        })
-    } else if (!username) {
-        res.json({
-            status: "FAILED",
-            message: "Error getting username"
-        })
-    } else {
-        User.find({name: username}).then(userFound => {
-            if (userFound.length) {
-                res.json({
-                    status: "SUCCESS",
-                    message: "Username is not available"
-                })
-            } else {
-                res.json({
-                    status: "SUCCESS",
-                    message: "Username is available"
-                })
-            }
-        }).catch(err => {
-            console.log(err)
-            res.json({
-                status: "FAILED",
-                message: "Error finding user."
-            })
-        })
-    }
-})
-
-router.post('/forgottenpasswordaccountusername', (req, res) => {
-    let {username} = req.body;
-    username = username.toLowerCase().trim();
-    User.find({name: username}).then(userFound => {
-        if (userFound.length) {
-            // User exists
-            // Create a verification key so the user can reset their password
-            axios.get('https://www.random.org/integers/?num=1&min=1&max=1000000000&col=1&base=16&format=plain&rnd=new').then((randomString) => {
-                randomString = randomString.data.trim();
-                if (randomString.length === 8) {
-                    // String can be used for account verification
-                    const userID = userFound[0]._id.toString();
-                    const userEmail = userFound[0].email;
-                    const saltRounds = 10;
-                    bcrypt.hash(randomString, saltRounds).then(hashedRandomString => {
-                        const success = AccountVerificationCodeCache.set(userID, hashedRandomString);
-                        if (success) {
-                            // Modified stack overflow answer from https://stackoverflow.com/users/14547938/daniel
-                            // Answer link: https://stackoverflow.com/questions/64605601/partially-mask-email-address-javascript
-                            // --- Start of blur email code ---
-                            let parts = userEmail.split("@");
-                            let firstPart = parts[0];
-                            let secondPart = parts[1];
-                            let blur = firstPart.split("");
-                            let skip = 2;
-                            for (let i = 0; i < blur.length; i += 1) {
-                                if (skip > 0) {
-                                    skip--;
-                                    continue;
-                                }
-                                if (skip === 0) {
-                                    blur[i] = "*";
-                                    blur[i + 1] = "*";
-                                    skip = 2;
-                                    i++;
-                                }
-                            }
-                            let partsOfSecondPart = secondPart.split(".");
-                            let firstPartOfSecondPart = partsOfSecondPart[0];
-                            let secondPartOfSecondPart = partsOfSecondPart[1];
-                            let blurredSecondPart = firstPartOfSecondPart.split("");
-                            for (let i = 0; i < blurredSecondPart.length; i += 1) {
-                                if (skip > 0) {
-                                    skip--;
-                                    continue;
-                                }
-                                if (skip === 0) {
-                                    blurredSecondPart[i] = "*";
-                                    blurredSecondPart[i + 1] = "*";
-                                    skip = 2;
-                                    i++;
-                                }
-                            }
-                            let blurredMail = `${blur.join("")}@${blurredSecondPart.join("")}.${secondPartOfSecondPart}`;
-                            // --- End of blur email code ---
-                            var emailData = {
-                                from: process.env.SMTP_EMAIL,
-                                to: userEmail,
-                                subject: "Reset password for your SocialSquare account",
-                                text: `Your account requested a password reset. Please enter this code into SocialSquare to reset your password: ${randomString}. If you did not request a password reset, please ignore this email.`,
-                                html: `<p>Your account requested a password reset. Please enter this code into SocialSquare to reset your password: ${randomString}. If you did not request a password reset, please ignore this email.</p>`
-                            };
-                            mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
-                                if(error){
-                                    console.log("Error happened while sending email to user for forgotten password. Username of user was: " + userFound[0].name);
-                                    console.log("Error type:", error.name);
-                                    console.log("SMTP log:", error.data);
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "Error sending email to reset password."
-                                    })
-                                } else if (response) {
-                                    res.json({
-                                        status: "SUCCESS",
-                                        message: "Email sent to reset password.",
-                                        data: blurredMail
-                                    })
-                                } else {
-                                    console.log('Mail send error object: ' + error);
-                                    console.log('Mail send response object: ' + response);
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "An unexpected error occured while sending email to reset password."
-                                    })
-                                }
-                            });
-                        } else {
-                            res.json({
-                                status: "FAILED",
-                                message: "Error while setting verification code."
-                            })
-                        }
-                    }).catch((error) => {
-                        console.log('Error hashing random string: ' + error);
-                        res.json({
-                            status: "FAILED",
-                            message: "Error hashing random string."
-                        })
-                    })
-                } else {
-                    // String can't be used for account verification
-                    console.log('Error happened while generating random string. The random string generated was: ' + randomString);
-                    res.json({
-                        status: "FAILED",
-                        message: "Error occured while generating random string."
-                    })
-                }
-            }).catch((error) => {
-                console.log(error)
-                res.json({
-                    status: "FAILED",
-                    message: "Error generating random number."
-                })
-            })
-        } else {
-            res.json({
-                status: "FAILED",
-                message: "There is no user with this username. Please try again."
-            })
-        }
-    }).catch(err => {
-        console.log(err)
-        res.json({
-            status: "FAILED",
-            message: "Error finding user. Please try again"
-        })
-    })
-})
-
-router.post('/checkverificationcode', (req, res) => {
-    let {username, verificationCode} = req.body;
-    username = username.toLowerCase().trim();
-    User.find({name: username}).then(userFound => {
-        if (userFound.length) {
-            const userID = userFound[0]._id.toString();
-            const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
-            if (hashedVerificationCode == undefined) {
-                res.json({
-                    status: "FAILED",
-                    message: "Verification code has expired. Please create a new code."
-                })
-            } else {
-                bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
-                    if (result) {
-                        res.json({
-                            status: "SUCCESS",
-                            message: "Verification code is correct."
-                        })
-                    } else {
-                        res.json({
-                            status: "FAILED",
-                            message: "Verification code is incorrect."
-                        })
-                    }
-                }).catch(error => {
-                    console.log(error)
-                    res.json({
-                        status: "FAILED",
-                        message: "Error comparing verification code. Please try again."
-                    })
-                })
-            }
-        } else {
-            res.json({
-                status: "FAILED",
-                message: "There is no user with that username. Please try again."
-            })
-        }
-    }).catch((error) => {
-        console.log(error);
-        res.json({
-            status: "FAILED",
-            message: "Error finding user. Please try again"
-        })
-    })
-})
-
-//ChangePassword
-router.post('/changepasswordwithverificationcode', (req, res) => {
-    let {newPassword, confirmNewPassword, verificationCode, username} = req.body;
-    newPassword = newPassword.trim()
-    confirmNewPassword = confirmNewPassword.trim()
-
-    if (newPassword == "" || confirmNewPassword == "") {
-        res.json({
-            status: "FAILED",
-            message: "Empty credentials supplied!"
-        })
-    } else if (newPassword !== confirmNewPassword) {
-        res.json({
-            status: "FAILED",
-            message: "Passwords do not match!"
-        })
-    } else if (newPassword.length < 8) {
-        res.json({
-            status: "FAILED",
-            message: "Password must be at least 8 characters long!"
-        })
-    } else {
-        User.find({name: username}).then(userFound => {
-            if (userFound.length) {
-                //User exists
-                const userID = userFound[0]._id.toString();
-                const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
-                if (hashedVerificationCode == undefined) {
-                    res.json({
-                        status: "FAILED",
-                        message: "Verification code has expired. Please create a new code."
-                    })
-                } else {
-                    bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
-                        if (result) {
-                            //Verification code is correct
-                            AccountVerificationCodeCache.del(userID);
-                            const saltRounds = 10;
-                            bcrypt.hash(newPassword, saltRounds).then(hashedPassword => {
-                                User.findOneAndUpdate({_id: userID}, {password: hashedPassword}).then(result => {
-                                    res.json({
-                                        status: "SUCCESS",
-                                        message: "Password changed successfully."
-                                    })
-                                }).catch(error => {
-                                    console.log(error)
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "Error changing password. Please try again."
-                                    })
-                                })
-                            }).catch(error => {
-                                console.log(error)
-                                res.json({
-                                    status: "FAILED",
-                                    message: "Error hashing password. Please try again."
-                                })
-                            })
-                        } else {
-                            res.json({
-                                status: "FAILED",
-                                message: "Verification code is incorrect."
-                            })
-                        }
-                    }).catch(error => {
-                        console.log(error)
-                        res.json({
-                            status: "FAILED",
-                            message: "Error comparing verification code. Please try again."
-                        })
-                    })
-                }
-            } else {
-                res.json({
-                    status: "FAILED",
-                    message: "There is no user with that username. Please try again."
-                })
-            }
-        }).catch((error) => {
-            console.log(error);
-            res.json({
-                status: "FAILED",
-                message: "Error finding user. Please try again"
-            })
         })
     }
 })
@@ -6702,7 +6415,9 @@ router.post('/enableAlgorithm', (req, res) => {
 
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
-            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: true}).then(function() {
+            let newSettings = userFound[0].settings;
+            newSettings.algorithmSettings.enabled = true;
+            User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
                     message: "Algorithm has now been enabled."
@@ -6740,7 +6455,7 @@ router.get('/getAuthenticationFactorsEnabled/:userID', (req, res) => {
             res.json({
                 status: "SUCCESS",
                 message: "Authentication factors found.",
-                data: userFound.authenticationFactorsEnabled ? userFound.authenticationFactordEnabled : []
+                data: {authenticationFactorsEnabled: userFound[0].authenticationFactorsEnabled, MFAEmail: userFound[0].MFAEmail ? blurEmailFunction(userFound[0].MFAEmail) : null}
             })
         } else {
             res.json({
@@ -6764,7 +6479,9 @@ router.post('/disableAlgorithm', (req, res) => {
 
     User.find({_id: userID}).then(userFound => {
         if (userFound.length) {
-            User.findOneAndUpdate({_id: userID}, {algorithmEnabled: false}).then(function() {
+            let newSettings = userFound[0].settings;
+            newSettings.algorithmSettings.enabled = false;
+            User.findOneAndUpdate({_id: userID}, {settings: newSettings}).then(function() {
                 res.json({
                     status: "SUCCESS",
                     message: "Algorithm has now been disabled."
@@ -6798,11 +6515,11 @@ router.get('/reloadProfileEssentials/:userId', (req, res) => {
 
     User.find({_id: userId}).then(userFound => {
         if (userFound.length) {
-            let sendBackForReload = userFound[0].slice();
+            let sendBackForReload = userFound[0];
             //list should include everything that we dont pass back
             ['secondId', 'password', 'notificationKeys'].forEach(x => delete sendBackForReload[x])
             res.json({
-                status: "SUCCES",
+                status: "SUCCESS",
                 message: "Reload Information Successful.",
                 data: sendBackForReload
             })
@@ -6817,6 +6534,524 @@ router.get('/reloadProfileEssentials/:userId', (req, res) => {
         res.json({
             status: "FAILED",
             message: "Error finding user."
+        })
+    })
+})
+
+router.post('/turnOffEmailMultiFactorAuthentication', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim();
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            User.findOneAndUpdate({_id: userID}, {$pull: {authenticationFactorsEnabled: 'Email'}}).then(function() {
+                User.findOneAndUpdate({_id: userID}, {MFAEmail: undefined}).then(function() {
+                    res.json({
+                        status: "SUCCESS",
+                        message: "Email multi-factor authentication has been turned off successfully."
+                    })
+                }).catch(error => {
+                    console.log(error)
+                    console.log("An error occured while setting MFAEmail to undefined for user with ID: " + userID)
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured whilwe turning off email multi-factor authentication."
+                    })
+                })
+            }).catch(error => {
+                console.log(error)
+                console.log("An error occured while removing Email from the authenticationFactorsEnabled array for user with ID: " + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while turning off email multi-factor authentication."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.log('Error occured while turning off email MFA: ' + error)
+        console.log('The error occured for account with user ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "Error finding user."
+        })
+    })
+})
+
+router.post('/sendemailverificationcode', async (req, res) => {
+    let {userID, task, getAccountMethod, username, email} = req.body;
+    userID = userID.toString().trim();
+
+    try {
+        var randomString = await axios.get('https://www.random.org/integers/?num=1&min=1&max=1000000000&col=1&base=16&format=plain&rnd=new')
+        randomString = randomString.data.trim();
+        console.log('Random string generated: ' + randomString)
+
+        if (randomString.length != 8) {
+            console.log('An error occured while generating random string. The random string that was generated is: ' + randomString)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while generating random string. Please try again later."
+            })
+            return
+        }
+    } catch (error) {
+        console.log(error)
+        console.log('An error occured while getting a random string.')
+        res.json({
+            status: "FAILED",
+            message: "An error occured while creating a random string."
+        })
+        return
+    }
+
+    if (getAccountMethod == 'userID') {
+
+        User.find({_id: userID}).then(async (userFound) => {
+            if (userFound.length) {
+                const saltRounds = 10;
+                try {
+                    var hashedRandomString = await bcrypt.hash(randomString, saltRounds);
+                } catch (error) {
+                    console.log(error)
+                    console.log('Am error occured while hashing random string.')
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while hashing the random string."
+                    })
+                    return
+                }
+                const success = EmailVerificationCodeCache.set(userID, hashedRandomString);
+                if (!success) {
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while setting random string."
+                    })
+                    return
+                }
+            } else {
+                res.json({
+                    status: "FAILED",
+                    message: "User not found."
+                })
+                return
+            }
+        }).catch(error => {
+            console.log(error)
+            console.log('An error occured while finding user with user ID: ' + userID)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while finding the user."
+            })
+            return
+        })
+
+        if (task == "Add Email Multi-Factor Authentication") {
+            var emailData = {
+                from: process.env.SMTP_EMAIL,
+                to: email,
+                subject: "Add Email as a Multi-Factor Authentication to your SocialSquare account",
+                text: `Your account requested to add email as a factor for multi-factor authentication. Please enter this code into SocialSquare to add email as a factor for multi-factor authentication: ${randomString}. If you did not request this, please change your password as only users who are logged into your account can make this request.`,
+                html: `<p>Your account requested to add email as a factor for multi-factor authentication. Please enter this code into SocialSquare to add email as a factor for multi-factor authentication: ${randomString}. If you did not request this, please change your password as only users who are logged into your account can make this request.</p>`
+            };
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Unknown task sent."
+            })
+            return
+        }
+
+        mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
+            if(error){
+                console.log("Error happened while sending email to user for task: " + task + ". User ID for user was: " + userID);
+                console.log("Error type:", error.name);
+                console.log("SMTP log:", error.data);
+                res.json({
+                    status: "FAILED",
+                    message: "Error sending email."
+                })
+            } else if (response) {
+                console.log('Sent random string to user.')
+                res.json({
+                    status: "SUCCESS",
+                    message: "Email sent.",
+                    data: {email: email, fromAddress: process.env.SMTP_EMAIL}
+                })
+            } else {
+                console.log('Mail send error object: ' + error);
+                console.log('Mail send response object: ' + response);
+                res.json({
+                    status: "FAILED",
+                    message: "An unexpected error occured while sending email."
+                })
+            }
+        });
+
+    } else if (getAccountMethod == "username") {
+        res.json({
+            status: "FAILED",
+            message: "username getAccountMethod is not supported yet. This will be coming soon."
+        })
+    } else {
+        res.json({
+            status: "FAILED",
+            message: "Unrecognized getAccountMethod sent."
+        })
+    }
+})
+
+router.post('/deleteaccount', (req, res) => {
+    let {userID} = req.body;
+    userID = userID.toString().trim();
+    console.log('Trying to delete user with ID: ' + userID)
+
+    User.find({_id: userID}).then(userFound => {
+        User.deleteOne({_id: userID}).then(function() {
+            if (userFound[0] && userFound[0].profileImageKey !== '') {
+                let filepath = path.resolve(process.env.UPLOADED_PATH, userFound[0].profileImageKey);
+                fs.unlink(filepath, (err) => {
+                    if (err) {
+                        console.error(err)
+                        console.error('Error deleting profile image with key: ' + userFound[0].profileImageKey)
+                    }
+                })
+            }
+            console.log('Deleted user with ID: ' + userID)
+            ImagePost.find({imageCreatorId: userID}).then(images => {
+                images.map(image => {
+                    ImagePost.deleteOne({_id: image._id}).then(function() {
+                        let filepath = path.resolve(process.env.UPLOADED_PATH, image.imageKey);
+                        fs.unlink(filepath, function(err) {
+                            if (err) {
+                                console.log('Error deleting image: ' + err)
+                            }
+                        })
+                    }).catch(error => {
+                        console.error('Error deleting image post with ID: ' + image._id)
+                        console.error(error)
+                    })
+                })
+                console.log('Deleted all image posts created by user with ID: ' + userID);
+                Poll.deleteMany({pollCreatorId: userID}).then(function() {
+                    console.log('Deleted all polls created by user with ID: ' + userID);
+                    Thread.find({creatorId: userID}).then(threads => {
+                        threads.map(thread => {
+                            Thread.deleteOne({_id: thread._id}).then(function(){
+                                if (thread.threadType == "Images") {
+                                    let filepath = path.resolve(process.env.UPLOADED_PATH, thread.threadImageKey);
+                                    fs.unlink(filepath, function(err) {
+                                        if (err) {
+                                            console.log('Error deleting image: ' + err)
+                                        }
+                                    })
+                                }
+                            }).catch(err => {
+                                console.error('Error deleting thread with ID: ' + thread._id)
+                                console.error(err)
+                            });
+                        })
+                        console.log('Deleted all threads created by user with ID: ' + userID);
+                        Message.deleteMany({senderId: userID}).then(function() {
+                            console.log('Deleted all messages sent by user with ID: ' + userID);
+                            User.find({followers: {$in: [userID]}}).then(usersFollowersFound => {
+                                if (usersFollowersFound.length) {
+                                    usersFollowersFound.forEach(user => {
+                                        User.findOneAndUpdate({_id: user._id}, {$pull: {followers: userID}}).then(function() {
+                                            console.log('Removed user ID ' + userID + ' from followers of user ID ' + user._id)
+                                        }).catch(error => {
+                                            console.log(error)
+                                            console.log('An error occured while removing user ID ' + userID + ' from followers of user ID ' + user._id)
+                                        })
+                                    })
+                                }
+                                User.find({following: {$in: [userID]}}).then(usersFollowingFound => {
+                                    if (usersFollowingFound.length) {
+                                        usersFollowingFound.forEach(user => {
+                                            User.findOneAndUpdate({_id: user._id}, {$pull: {following: userID}}).then(function() {
+                                                console.log('Removed user ID ' + userID + ' from following of user ID ' + user._id)
+                                            }).catch(error => {
+                                                console.log(error)
+                                                console.log('An error occured while removing user ID ' + userID + ' from following of user ID ' + user._id)
+                                            })
+                                        })
+                                    }
+                                    User.find({blockedAccounts: {$in: [userID]}}).then(usersBlockedFound => {
+                                        if (usersBlockedFound.length) {
+                                            usersBlockedFound.forEach(user => {
+                                                User.findOneAndUpdate({_id: user._id}, {$pull: {blockedAccounts: userID}}).then(function() {
+                                                    console.log('Removed user ID ' + userID + ' from blocked accounts of user ID ' + user._id)
+                                                }).catch(error => {
+                                                    console.log(error)
+                                                    console.log('An error occured while removing user ID ' + userID + ' from blocked accounts of user ID ' + user._id)
+                                                })
+                                            })
+                                        }
+                                        if (userFound.length) {
+                                            res.json({
+                                                status: "SUCCESS",
+                                                message: "Account deleted."
+                                            })
+                                        } else {
+                                            res.json({
+                                                status: "SUCCESS",
+                                                message: "Any undeleted data has now been deleted."
+                                            })
+                                        }
+                                    }).catch(error => {
+                                        console.log(error)
+                                        console.log('An error occured while finding users who have user ID ' + userID + ' in their blocked accounts.')
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "An error occured while finding users who have blocked you"
+                                        })
+                                    })
+                                }).catch(error => {
+                                    console.log(error)
+                                    console.log('An error occured while finding users who are following user ID ' + userID)
+                                    res.json({
+                                        status: "FAILED",
+                                        message: "An error occured while finding users who you are following"
+                                    })
+                                })
+                            }).catch(error => {
+                                console.log(error)
+                                console.log('An error occured while finding users who follow user ID ' + userID)
+                                res.json({
+                                    status: "FAILED",
+                                    message: "An error occured while finding users who follow you"
+                                })
+                            })
+                        }).catch(error => {
+                            console.log(error)
+                            console.log('An error occured while deleting messages sent by user with user ID: ' + userID)
+                            res.json({
+                                status: "FAILED",
+                                message: "An error occured while deleting messages."
+                            })
+                        })
+                    }).catch(error => {
+                        console.log(error)
+                        console.log('An error occured while deleting threads for user with ID: ' + userID)
+                        res.json({
+                            status: "FAILED",
+                            message: "An error occured while deleting threads."
+                        })
+                    })
+                }).catch(error => {
+                    console.log('Error occured while deleting polls: ' + error)
+                    console.log('The error occured for account with user ID: ' + userID)
+                    res.json({
+                        status: "FAILED",
+                        message: "An error occured while deleting polls."
+                    })
+                })       
+            }).catch(error => {
+                console.log(error)
+                console.log('An error occured while deleting image posts for user with user ID: ' + userID)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while deleting image posts."
+                })
+            })
+        }).catch(error => {
+            console.log(error)
+            console.log('An error occured while deleting user with user ID: ' + userID)
+            res.json({
+                status: "FAILED",
+                message: "An error occured while deleting user."
+            })
+        })
+    }).catch(error => {
+        console.log(error)
+        console.log('An error occured while finding user with user ID: ' + userID)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while finding user."
+        })
+    })
+})
+
+router.get('/checkIfCategoryExists/:categoryTitle', (req, res) => {
+    let categoryTitle = req.params.categoryTitle;
+
+    Category.find({categoryTitle: {'$regex': `^${categoryTitle}$`, $options: 'i'}}).then(categoryFound => {
+        if (categoryFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: true
+            })
+        } else {
+            res.json({
+                status: "SUCCESS",
+                message: false
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while checking if a category existed.')
+        console.error(error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured. Please try again later."
+        })
+    })
+})
+
+router.post('/uploadNotificationsSettings', (req, res) => {
+    let {notificationSettings, userID} = req.body;
+
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            let newUserSettings = userFound[0].settings;
+            let newNotificationSettings = newUserSettings.notificationSettings;
+            if (typeof notificationSettings.TextMessages == 'boolean') {
+                newNotificationSettings.TextMessages = notificationSettings.TextMessages;
+            }
+            if (typeof notificationSettings.GainsFollower == 'boolean') {
+                newNotificationSettings.GainsFollower = notificationSettings.GainsFollower;
+            }
+            if (typeof notificationSettings.FollowRequests == 'boolean') {
+                newNotificationSettings.FollowRequests = notificationSettings.FollowRequests;
+            }
+            if (typeof notificationSettings.UpvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.UpvotesOnMultimediaPosts = notificationSettings.UpvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.NeutralVotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.NeutralVotesOnMultimediaPosts = notificationSettings.NeutralVotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.DownvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.DownvotesOnMultimediaPosts = notificationSettings.DownvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.UpvotesOnVideos == 'boolean') {
+                newNotificationSettings.UpvotesOnVideos = notificationSettings.UpvotesOnVideos;
+            }
+            if (typeof notificationSettings.NeutralVotesOnVideos == 'boolean') {
+                newNotificationSettings.NeutralVotesOnVideos = notificationSettings.NeutralVotesOnVideos;
+            }
+            if (typeof notificationSettings.DownvotesOnVideos == 'boolean') {
+                newNotificationSettings.DownvotesOnVideos = notificationSettings.DownvotesOnVideos;
+            }
+            if (typeof notificationSettings.UpvotesOnPolls == 'boolean') {
+                newNotificationSettings.UpvotesOnPolls = notificationSettings.UpvotesOnPolls;
+            }
+            if (typeof notificationSettings.NeutralVotesOnPolls == 'boolean') {
+                newNotificationSettings.NeutralVotesOnPolls = notificationSettings.NeutralVotesOnPolls;
+            }
+            if (typeof notificationSettings.DownvotesOnPolls == 'boolean') {
+                newNotificationSettings.DownvotesOnPolls = notificationSettings.DownvotesOnPolls;
+            }
+            if (typeof notificationSettings.UpvotesOnThreads == 'boolean') {
+                newNotificationSettings.UpvotesOnThreads = notificationSettings.UpvotesOnThreads;
+            }
+            if (typeof notificationSettings.NeutralVotesOnThreads == 'boolean') {
+                newNotificationSettings.NeutralVotesOnThreads = notificationSettings.NeutralVotesOnThreads;
+            }
+            if (typeof notificationSettings.DownvotesOnThreads == 'boolean') {
+                newNotificationSettings.DownvotesOnThreads = notificationSettings.DownvotesOnThreads;
+            }
+            if (typeof notificationSettings.PersonJoiningCategory == 'boolean') {
+                newNotificationSettings.PersonJoiningCategory = notificationSettings.PersonJoiningCategory;
+            }
+            if (typeof notificationSettings.SendTextMessages == 'boolean') {
+                newNotificationSettings.SendTextMessages = notificationSettings.SendTextMessages;
+            }
+            if (typeof notificationSettings.SendGainsFollower == 'boolean') {
+                newNotificationSettings.SendGainsFollower = notificationSettings.SendGainsFollower;
+            }
+            if (typeof notificationSettings.SendFollowRequests == 'boolean') {
+                newNotificationSettings.SendFollowRequests = notificationSettings.SendFollowRequests;
+            }
+            if (typeof notificationSettings.SendUpvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendUpvotesOnMultimediaPosts = notificationSettings.SendUpvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnMultimediaPosts = notificationSettings.SendNeutralVotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendDownvotesOnMultimediaPosts == 'boolean') {
+                newNotificationSettings.SendDownvotesOnMultimediaPosts = notificationSettings.SendDownvotesOnMultimediaPosts;
+            }
+            if (typeof notificationSettings.SendUpvotesOnVideos == 'boolean') {
+                newNotificationSettings.SendUpvotesOnVideos = notificationSettings.SendUpvotesOnVideos;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnVideos == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnVideos = notificationSettings.SendNeutralVotesOnVideos;
+            }
+            if (typeof notificationSettings.SendDownvotesOnVideos == 'boolean') {
+                newNotificationSettings.SendDownvotesOnVideos = notificationSettings.SendDownvotesOnVideos;
+            }
+            if (typeof notificationSettings.SendUpvotesOnPolls == 'boolean') {
+                newNotificationSettings.SendUpvotesOnPolls = notificationSettings.SendUpvotesOnPolls;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnPolls == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnPolls = notificationSettings.SendNeutralVotesOnPolls;
+            }
+            if (typeof notificationSettings.SendDownvotesOnPolls == 'boolean') {
+                newNotificationSettings.SendDownvotesOnPolls = notificationSettings.SendDownvotesOnPolls;
+            }
+            if (typeof notificationSettings.SendUpvotesOnThreads == 'boolean') {
+                newNotificationSettings.SendUpvotesOnThreads = notificationSettings.SendUpvotesOnThreads;
+            }
+            if (typeof notificationSettings.SendNeutralVotesOnThreads == 'boolean') {
+                newNotificationSettings.SendNeutralVotesOnThreads = notificationSettings.SendNeutralVotesOnThreads;
+            }
+            if (typeof notificationSettings.SendDownvotesOnThreads == 'boolean') {
+                newNotificationSettings.SendDownvotesOnThreads = notificationSettings.SendDownvotesOnThreads;
+            }
+            if (typeof notificationSettings.SendJoiningCategory == 'boolean') {
+                newNotificationSettings.SendJoiningCategory = notificationSettings.SendJoiningCategory;
+            }
+            newUserSettings.notificationSettings = newNotificationSettings;
+
+            User.findOneAndUpdate({_id: userID}, {settings: newUserSettings}).then(function() {
+                res.json({
+                    status: "SUCCESS",
+                    message: "Notification settings updated successfully."
+                })
+            }).catch(error => {
+                console.error('An error occured while changing notification settings for user with ID: ' + userID);
+                console.error('This is the error: ' + error)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while updating notification settings."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+    })
+})
+
+router.get('/getUserNotificationSettings/:userID', (req, res) => {
+    const userID = req.params.userID;
+    User.find({_id: userID}).then(userFound => {
+        if (userFound.length) {
+            res.json({
+                status: "SUCCESS",
+                message: "Notification settings retrieved successfully.",
+                data: userFound[0].settings.notificationSettings
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "User not found."
+            })
+        }
+    }).catch(error => {
+        console.error('An error occured while finding user with ID: ' + userID)
+        console.error('The error was: ' + error)
+        res.json({
+            status: "FAILED",
+            message: "An error occured while getting notification settings. Please try again later."
         })
     })
 })

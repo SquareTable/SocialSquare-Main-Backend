@@ -5,7 +5,7 @@ function generateAuthJWT(toSign) { //to sign should be something like a user nam
 }
 
 function tokenValidation(req, res, next) {
-    const authHeader = req.headers["refresh-token"];
+    const authHeader = req.headers["Authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
     if (token == null) return res.sendStatus(401);
