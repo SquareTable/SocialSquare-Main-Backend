@@ -42,7 +42,7 @@ function generateNewAuthToken(res, refreshToken) {
         if (err) {
             console.log("Refresh Failed")
             console.log("Issue with refresh token may be incorrect or expired.")
-            res.sendStatus(403);
+            res.status(403).json({message: "Issue with refresh token may be incorrect or expired."});
         } else {
             console.log(decoded)
             User.find({_id: decoded._id}).then(userFoundWithTokensId => {
@@ -50,10 +50,10 @@ function generateNewAuthToken(res, refreshToken) {
                     const validTokenFound = () => {
                         console.log("Refresh token matches generating new auth token.")
                         const token = generateAuthJWT(userFoundWithTokensId[0]._id);
-                        res.json({
-                            status: "SUCCESS",
-                            message: "New token generated.",
-                            token: `Bearer ${token}`
+                        res.status(403).json({
+                            message: "Token generated.",
+                            token: `Bearer ${token}`,
+                            userId: userFoundWithTokensId[0]._id
                         })
                     }
                     //check if token is a valid refresh token
@@ -66,20 +66,20 @@ function generateNewAuthToken(res, refreshToken) {
                                 // only would happen if all done and none matched
                                 console.log("Refresh Failed")
                                 console.log("Refresh token didn't match valid ones.")
-                                res.sendStatus(403);
+                                res.status(403).json({message: "Refresh token didn't match valid ones."})
                             }
                         }
                     }
                 } else {
                     console.log("Refresh Failed")
-                    console.log("Refresh token didn't match valid ones.")
-                    res.sendStatus(403);
+                    console.log("Couldn't find user with token provided.")
+                    res.status(403).json({message: "Couldn't find user with token provided."})
                 }
             }).catch(err => {
                 console.log(`Error occured when finding user with the token: ${err}`)
                 console.log("Refresh Failed")
-                console.log("Refresh token didn't match valid ones.")
-                res.sendStatus(403);
+                console.log("Error finding user with token provided.")
+                res.status(403).json({message: "Error finding user with token provided."})
             })
         }
     })
