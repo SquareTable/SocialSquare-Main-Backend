@@ -7059,7 +7059,7 @@ router.get('/getUserNotificationSettings/:userID', (req, res) => {
 const validReportOptions = {Content: ["Spam", "Nudity/Sexual", "Don't Like", "Hate", "SelfHarm", "Illegal/Regulated goods", "Violence/Dangerous", "Bullying/Harassment", "Intellectual property violation", "Scam/Fraud", "False Info"], Age: ["Underage"], Impersonation: ["Of Reporter", "Of Someone Reporter Knows", "Celebrity/Public", "Business/Organisation"]}
 
 router.post('/reportUser', (req, res) => {
-    let {reportType, reporterId, reporteePubId} = req.body; // maybe add a body which is just text the reporter can add ti emphasize their point.
+    let {reportType, reporterId, reporteePubId} = req.body; // maybe add a body which is just text the reporter can add to emphasize their point.
     User.find({_id: reporterId}).then(reporterFound => {
         if (reporterFound.length) {
             User.find({secondId: reporteePubId}).then(reporteeFound => {
@@ -7068,7 +7068,7 @@ router.post('/reportUser', (req, res) => {
                         console.log(`Valid report passed by: ${reporterFound[0].name} about ${reporteeFound[0].name} with the reasoning being: ${reportType.topic}-${reportType.subTopic}`)
                         //send an email for now we can have a admin console later or something.
                         var emailData = {
-                            from: process.env.SS_MODERATION_EMAIL,
+                            from: process.env.SMTP_EMAIL,
                             to: process.env.SS_MODERATION_EMAIL,
                             subject: "Account Report",
                             text: `User of _id:\n${reporterFound[0]._id} filed a report on user of _id:\n${reporteeFound[0]._id}\nReport Topic: ${reportType.topic}\nReport SubTopic: ${reportType.subTopic}`,
