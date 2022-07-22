@@ -7056,4 +7056,77 @@ router.get('/getUserNotificationSettings/:userID', (req, res) => {
     })
 })
 
+const validReportOptions = {Content: ["Spam", "Nudity/Sexual", "Don't Like", "Hate", "SelfHarm", "Illegal/Regulated goods", "Violence/Dangerous", "Bullying/Harassment", "Intellectual property violation", "Scam/Fraud", "False Info"], Age: ["Underage"], Impersonation: ["Of Reporter", "Of Someone Reporter Knows", "Celebrity/Public", "Business/Organisation"]}
+
+router.post('/reportUser', (req, res) => {
+    let {reportType, reporterId, reporteePubId} = req.body; // maybe add a body which is just text the reporter can add ti emphasize their point.
+    User.find({_id: reporterId}).then(reporterFound => {
+        if (reporterFound.length) {
+            User.find({secondId: reporteePubId}).then(reporteeFound => {
+                if (reporteeFound.length) {
+                    if (validReportOptions[reportType?.topic].includes(reportType?.subTopic)) {
+                        console.log(`Valid report passed by: ${reporterFound[0].name} about ${reporteeFound[0].name} with the reasoning being: ${reportType.topic}-${reportType.subTopic}`)
+                        //send an email for now we can have a admin console later or something.
+                        var emailData = {
+                            from: process.env.SS_MODERATION_EMAIL,
+                            to: process.env.SS_MODERATION_EMAIL,
+                            subject: "Account Report",
+                            text: `User of _id:\n${reporterFound[0]._id} filed a report on user of _id:\n${reporteeFound[0]._id}\nReport Topic: ${reportType.topic}\nReport SubTopic: ${reportType.subTopic}`,
+                            html: `<p>User of _id:\n${reporterFound[0]._id} filed a report on user of _id:\n${reporteeFound[0]._id}\nReport Topic: ${reportType.topic}\nReport SubTopic: ${reportType.subTopic}</p>`
+                        };
+                        mailTransporter.sendMail(emailData, function(error, response){ // Modified answer from https://github.com/nodemailer/nodemailer/issues/169#issuecomment-20463956
+                            if(error){
+                                console.log("Error happened while sending email regarding report: ");
+                                console.log(error);
+                                res.json({
+                                    status: "FAILED",
+                                    message: "Error transporting report to moderation."
+                                })
+                            } else if (response) {
+                                console.log('Sent moderation email.')
+                                res.json({
+                                    status: "SUCCESS",
+                                    message: "User reported."
+                                })
+                            } else {
+                                console.log('Mail send error object: ' + error);
+                                console.log('Mail send response object: ' + response);
+                                res.json({
+                                    status: "FAILED",
+                                    message: "An unexpected error occured while transporting report to moderation."
+                                })
+                            }
+                        });
+                    } else {
+                        console.log("Invalid report options chosen.")
+                        res.json({
+                            status: "FAILED",
+                            message: "Invalid report options provided."
+                        })
+                    }
+                }
+            }).catch(error => {
+                console.log("An error occured while searching for user to report: ")
+                console.log(error)
+                res.json({
+                    status: "FAILED",
+                    message: "An error occured while searching for user to report."
+                })
+            })
+        } else {
+            res.json({
+                status: "FAILED",
+                message: "Couldn't find user with ID provided."
+            })
+        }
+    }).catch(error => {
+        console.log("Error occured while searching for user making request: ")
+        console.log(error)
+        res.json({
+            status: "FAILED",
+            message: "Error occured while searching for user making request."
+        })
+    })
+})
+
 module.exports = router;
