@@ -59,6 +59,7 @@ const Poll = require('./../models/Poll');
 const ImagePost = require('./../models/ImagePost');
 const Category = require('./../models/Category');
 const Thread = require('./../models/Thread')
+const Message = require('./../models/Message')
 
 // Password handler
 const bcrypt = require('bcrypt');
