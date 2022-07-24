@@ -63,9 +63,7 @@ const Thread = require('./../models/Thread')
 // Password handler
 const bcrypt = require('bcrypt');
 
-// Memory cache for account verification codes
-const NodeCache = require( "node-cache" );
-const AccountVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
+const { setCacheItem } = require('../memoryCache.js')
 
 // Use axios to make HTTP GET requests to random.org to get random base-16 strings for account verification codes
 const axios = require('axios')
@@ -73,17 +71,7 @@ const axios = require('axios')
 // Use .env file for email configuration
 require('dotenv').config();
 
-// Use nodemailer for sending emails to users
-const nodemailer = require("nodemailer");
-let mailTransporter = nodemailer.createTransport({
-    host: process.env.SMTP_SERVER,
-    port: process.env.SMTP_PORT,
-    secure: false, // IN THE FUTURE MAKE THIS TRUE --- true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-});
+const { blurEmailFunction, mailTransporter } = require('../globalFunctions.js')
 
 
 //Web Token Stuff
@@ -6625,7 +6613,7 @@ router.post('/sendemailverificationcode', async (req, res) => {
                     })
                     return
                 }
-                const success = EmailVerificationCodeCache.set(userID, hashedRandomString);
+                const success = setCacheItem('EmailVerificationCodeCache', userID, hashedRandomString);
                 if (!success) {
                     res.json({
                         status: "FAILED",

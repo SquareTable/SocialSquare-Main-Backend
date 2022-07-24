@@ -64,12 +64,6 @@ const Message = require('./../models/Message')
 // Password handler
 const bcrypt = require('bcrypt');
 
-
-// Memory cache for account verification codes
-const NodeCache = require( "node-cache" );
-const AccountVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
-const EmailVerificationCodeCache = new NodeCache({stdTTL: 300, checkperiod: 330});
-
 // Use axios to make HTTP GET requests to random.org to get random base-16 strings for account verification codes
 const axios = require('axios')
 
@@ -79,6 +73,8 @@ require('dotenv').config();
 //Web Token Stuff
 
 const { tokenValidation, refreshTokenEncryption, refreshTokenDecryption } = require("../middleware/TokenHandler");
+
+const { setCacheItem, getCacheItem, delCacheItem } = require('../memoryCache.js')
 
 //router.all("*", [tokenValidation]); // the * just makes it that it affects them all it could be /whatever and it would affect that only
 
@@ -90,59 +86,7 @@ function generateRefreshToken(toSign) {
     return jwt.sign({_id: toSign}, process.env.SECRET_FOR_TOKENS, {expiresIn: "900s"}) //900s is 15 minutes
 }
 
-// Use nodemailer for sending emails to users
-const nodemailer = require("nodemailer");
-let mailTransporter = nodemailer.createTransport({
-    host: process.env.SMTP_SERVER,
-    port: process.env.SMTP_PORT,
-    secure: false, // IN THE FUTURE MAKE THIS TRUE --- true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-});
-
-
-function blurEmailFunction(emailToBlur) {
-    // Modified stack overflow answer from https://stackoverflow.com/users/14547938/daniel
-    // Answer link: https://stackoverflow.com/questions/64605601/partially-mask-email-address-javascript
-    // --- Start of blur email code ---
-    let parts = emailToBlur.split("@");
-    let firstPart = parts[0];
-    let secondPart = parts[1];
-    let blur = firstPart.split("");
-    let skip = 2;
-    for (let i = 0; i < blur.length; i += 1) {
-        if (skip > 0) {
-            skip--;
-            continue;
-        }
-        if (skip === 0) {
-            blur[i] = "*";
-            blur[i + 1] = "*";
-            skip = 2;
-            i++;
-        }
-    }
-    let partsOfSecondPart = secondPart.split(".");
-    let firstPartOfSecondPart = partsOfSecondPart[0];
-    let secondPartOfSecondPart = partsOfSecondPart[1];
-    let blurredSecondPart = firstPartOfSecondPart.split("");
-    for (let i = 0; i < blurredSecondPart.length; i += 1) {
-        if (skip > 0) {
-            skip--;
-            continue;
-        }
-        if (skip === 0) {
-            blurredSecondPart[i] = "*";
-            blurredSecondPart[i + 1] = "*";
-            skip = 2;
-            i++;
-        }
-    }
-    let blurredMail = `${blur.join("")}@${blurredSecondPart.join("")}.${secondPartOfSecondPart}`;
-    return blurredMail;
-};
+const { blurEmailFunction, mailTransporter } = require('../globalFunctions.js')
 
 //Signup
 router.post('/signup', (req, res) => {
@@ -230,7 +174,7 @@ router.post('/signup', (req, res) => {
                                     res.json({
                                         status: "SUCCESS",
                                         message: "SignUp successful",
-                                        data: data,
+                                        data: result,
                                         token: `Bearer ${token}`,
                                         refreshToken: `Bearer ${refreshToken}`
                                     })
@@ -323,7 +267,7 @@ router.post('/signin', (req, res) => {
                                     })
                                     return
                                 }
-                                const success = EmailVerificationCodeCache.set(data[0].secondId, hashedRandomString);
+                                const success = setCacheItem('EmailVerificationCodeCache', data[0].secondId, hashedRandomString);
                                 if (!success) {
                                     res.json({
                                         status: "FAILED",
@@ -355,8 +299,8 @@ router.post('/signin', (req, res) => {
                                             status: "SUCCESS",
                                             message: "Email",
                                             data: {email: blurEmailFunction(data[0].MFAEmail), fromAddress: process.env.SMTP_EMAIL, secondId: data[0].secondId},
-                                            token: `Bearer ${token}`,
-                                            refreshToken: `Bearer ${refreshToken}`
+                                            //token: `Bearer ${token}`,
+                                            //refreshToken: `Bearer ${refreshToken}`
                                         })
                                     } else {
                                         console.log('Mail send error object: ' + error);
@@ -467,7 +411,7 @@ router.post('/forgottenpasswordaccountusername', (req, res) => {
                     const userEmail = userFound[0].email;
                     const saltRounds = 10;
                     bcrypt.hash(randomString, saltRounds).then(hashedRandomString => {
-                        const success = AccountVerificationCodeCache.set(userID, hashedRandomString);
+                        const success = setCacheItem('AccountVerificationCodeCache', userID, hashedRandomString);
                         if (success) {
                             let blurredMail = blurEmailFunction(userEmail)
                             // --- End of blur email code ---
@@ -553,7 +497,7 @@ router.post('/checkverificationcode', (req, res) => {
         User.find({name: username}).then(userFound => {
             if (userFound.length) {
                 const userID = userFound[0]._id.toString();
-                const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
+                const hashedVerificationCode = getCacheItem('AccountVerificationCodeCache', userID);
                 if (hashedVerificationCode == undefined) {
                     res.json({
                         status: "FAILED",
@@ -605,7 +549,7 @@ router.post('/checkverificationcode', (req, res) => {
 
         User.find({_id: userID}).then(userFound => {
             if (userFound.length) {
-                const hashedVerificationCode = EmailVerificationCodeCache.get(userID);
+                const hashedVerificationCode = getCacheItem('EmailVerificationCodeCache', userID);
                 if (hashedVerificationCode == undefined) {
                     res.json({
                         status: "FAILED",
@@ -674,7 +618,7 @@ router.post('/checkverificationcode', (req, res) => {
     } else if (getAccountMethod == 'secondId') {
         User.find({secondId: secondId}).then(userFound => {
             if (userFound.length) {
-                const hashedVerificationCode = EmailVerificationCodeCache.get(secondId);
+                const hashedVerificationCode = getCacheItem('EmailVerificationCodeCache', secondId);
                 if (hashedVerificationCode == undefined) {
                     res.json({
                         status: "FAILED",
@@ -684,14 +628,14 @@ router.post('/checkverificationcode', (req, res) => {
                     bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
                         if (result) {
                             if (task == "Verify Email MFA Code") {
-                                const token = generateAuthJWT(data[0]._id);
-                                const refreshToken = generateRefreshToken(data[0]._id);
+                                const token = generateAuthJWT(userFound[0]._id);
+                                const refreshToken = generateRefreshToken(userFound[0]._id);
                                 const encryptedRefreshToken = refreshTokenEncryption(refreshToken)
-                                User.findOneAndUpdate({_id: data[0]._id}, {$push: {refreshTokens: encryptedRefreshToken}}).then(() => {
+                                User.findOneAndUpdate({_id: userFound[0]._id}, {$push: {refreshTokens: encryptedRefreshToken}}).then(() => {
                                     res.json({
                                         status: "SUCCESS",
                                         message: "Signin successful",
-                                        data: data,
+                                        data: userFound[0],
                                         token: `Bearer ${token}`,
                                         refreshToken: `Bearer ${refreshToken}`
                                     })
@@ -765,7 +709,7 @@ router.post('/changepasswordwithverificationcode', (req, res) => {
             if (userFound.length) {
                 //User exists
                 const userID = userFound[0]._id.toString();
-                const hashedVerificationCode = AccountVerificationCodeCache.get(userID);
+                const hashedVerificationCode = getCacheItem('AccountVerificationCodeCache', userID);
                 if (hashedVerificationCode == undefined) {
                     res.json({
                         status: "FAILED",
@@ -775,7 +719,7 @@ router.post('/changepasswordwithverificationcode', (req, res) => {
                     bcrypt.compare(verificationCode, hashedVerificationCode).then(result => {
                         if (result) {
                             //Verification code is correct
-                            AccountVerificationCodeCache.del(userID);
+                            delCacheItem('AccountVerificationCodeCache', userID);
                             const saltRounds = 10;
                             bcrypt.hash(newPassword, saltRounds).then(hashedPassword => {
                                 User.findOneAndUpdate({_id: userID}, {password: hashedPassword}).then(result => {
