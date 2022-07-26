@@ -73,6 +73,9 @@
                     },
                     "400": {
                         "description": "Username or Post Name are empty or invalid."
+                    },
+                    "511": {
+                        "description": "Authentication is required to access this resource as the account is private."
                     }
                 }
             }
