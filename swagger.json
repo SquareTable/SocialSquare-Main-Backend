@@ -39,7 +39,13 @@
                         "description": "The server accepted the response and has successfully completed the request."
                     },
                     "400": {
+                        "description": "Username has not been provided."
+                    },
+                    "404": {
                         "description": "User with the specified username could not be found."
+                    },
+                    "500": {
+                        "description": "The server encountered an error processing the request. Check result.message for more information."
                     }
                 }
             }
@@ -79,6 +85,9 @@
                     },
                     "500": {
                         "description": "The server encountered an error processing the request. Check result.message for more details."
+                    },
+                    "503": {
+                        "description": "The option you have selected is coming soon."
                     },
                     "511": {
                         "description": "Authentication is required to access this resource as the account is private."
