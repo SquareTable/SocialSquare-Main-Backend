@@ -136,61 +136,24 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
 
             User.find({name: name}).then(userFoundResult => {
                 if (userFoundResult.length) {
-                    if (postformat == "Image") {
-                        if (postName !== "None") {
-                            ImagePost.find({imageCreatorId: userFoundResult[0]._id}).then(imagePostsFound => {
-                                if (imagePostsFound.length) {
-                                    var mostSimilarImagePost = null
-                                    var mostSimilarImagePostSimilarity = 0
-                                    var itemsProcessed = 0
-                                    imagePostsFound.forEach(function (item, index) {
-                                        var thisSimilarity = stringSimilarity.compareTwoStrings(imagePostsFound[index].imageTitle, postName)
-                                        if (mostSimilarImagePostSimilarity > thisSimilarity) {
-                                            //less similar
-                                            itemsProcessed++;
-                                            if (itemsProcessed == imagePostsFound.length) {
-                                                res.json({
-                                                    status: "SUCCESS",
-                                                    message: "Found",
-                                                    data: {
-                                                        similarity: mostSimilarImagePostSimilarity,
-                                                        format: "Image",
-                                                        imageKey: mostSimilarImagePost.imageKey,
-                                                        senderName: userFoundResult[0].senderName,
-                                                        senderDisplayName: userFoundResult[0].senderDisplayName,
-                                                        senderImageKey: userFoundResult[0].senderImageKey,
-                                                        imageTitle: mostSimilarImagePost.imageTitle,
-                                                        imageDescription: mostSimilarImagePost.imageDescription,
-                                                        upVotes: mostSimilarImagePost.imageUpVotes.length,
-                                                        downVotes: mostSimilarImagePost.imageDownVotes.length,
-                                                        datePosted: mostSimilarImagePost.datePosted 
-                                                    }
-                                                })
-                                            }
-                                        } else if (mostSimilarImagePostSimilarity == thisSimilarity) {
-                                            if (mostSimilarImagePost !== null) {
-                                                dates = [imagePostsFound[index], mostSimilarImagePost]
-                                                const sortedResult = dates.sort(function(a, b){
-                                                    var first = a.datePosted.split(" ")[0];
-                                                    var second = b.datePosted.split(" ")[0];
-                                                    if (first !== second) {
-                                                        var aa = first.split('/').reverse().join(),
-                                                            bb = second.split('/').reverse().join();
-                                                        return aa > bb ? -1 : (aa < bb ? 1 : 0);
-                                                    } else {
-                                                        var ind11 = a.datePosted.indexOf(' ');
-                                                        var ind12 = a.datePosted.indexOf(' ', ind11 + 1);
-                                                        var firstTime = a.datePosted.substring(ind12);
-                                                        var ind21 = b.datePosted.indexOf(' ');
-                                                        var ind22 = b.datePosted.indexOf(' ', ind21 + 1);
-                                                        var secondTime = b.datePosted.substring(ind22);
-                                                        return firstTime > secondTime ? -1 : (firstTime < secondTime ? 1 : 0);
-                                                    }
-                                                });
-                                                if (imagePostsFound[index] == sortedResult[0]) {
-                                                    mostSimilarImagePostSimilarity = thisSimilarity
-                                                }
-                                                mostSimilarImagePost = sortedResult[0]
+                    if (userFoundResult[0].privateAccount) {
+                        res.status(511).json({
+                            status: "SUCCESS",
+                            message: "Private Account. Authentication required."
+                        })
+                        return
+                    } else {
+                        if (postformat == "Image") {
+                            if (postName !== "None") {
+                                ImagePost.find({imageCreatorId: userFoundResult[0]._id}).then(imagePostsFound => {
+                                    if (imagePostsFound.length) {
+                                        var mostSimilarImagePost = null
+                                        var mostSimilarImagePostSimilarity = 0
+                                        var itemsProcessed = 0
+                                        imagePostsFound.forEach(function (item, index) {
+                                            var thisSimilarity = stringSimilarity.compareTwoStrings(imagePostsFound[index].imageTitle, postName)
+                                            if (mostSimilarImagePostSimilarity > thisSimilarity) {
+                                                //less similar
                                                 itemsProcessed++;
                                                 if (itemsProcessed == imagePostsFound.length) {
                                                     res.json({
@@ -210,6 +173,74 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
                                                             datePosted: mostSimilarImagePost.datePosted 
                                                         }
                                                     })
+                                                }
+                                            } else if (mostSimilarImagePostSimilarity == thisSimilarity) {
+                                                if (mostSimilarImagePost !== null) {
+                                                    dates = [imagePostsFound[index], mostSimilarImagePost]
+                                                    const sortedResult = dates.sort(function(a, b){
+                                                        var first = a.datePosted.split(" ")[0];
+                                                        var second = b.datePosted.split(" ")[0];
+                                                        if (first !== second) {
+                                                            var aa = first.split('/').reverse().join(),
+                                                                bb = second.split('/').reverse().join();
+                                                            return aa > bb ? -1 : (aa < bb ? 1 : 0);
+                                                        } else {
+                                                            var ind11 = a.datePosted.indexOf(' ');
+                                                            var ind12 = a.datePosted.indexOf(' ', ind11 + 1);
+                                                            var firstTime = a.datePosted.substring(ind12);
+                                                            var ind21 = b.datePosted.indexOf(' ');
+                                                            var ind22 = b.datePosted.indexOf(' ', ind21 + 1);
+                                                            var secondTime = b.datePosted.substring(ind22);
+                                                            return firstTime > secondTime ? -1 : (firstTime < secondTime ? 1 : 0);
+                                                        }
+                                                    });
+                                                    if (imagePostsFound[index] == sortedResult[0]) {
+                                                        mostSimilarImagePostSimilarity = thisSimilarity
+                                                    }
+                                                    mostSimilarImagePost = sortedResult[0]
+                                                    itemsProcessed++;
+                                                    if (itemsProcessed == imagePostsFound.length) {
+                                                        res.json({
+                                                            status: "SUCCESS",
+                                                            message: "Found",
+                                                            data: {
+                                                                similarity: mostSimilarImagePostSimilarity,
+                                                                format: "Image",
+                                                                imageKey: mostSimilarImagePost.imageKey,
+                                                                senderName: userFoundResult[0].senderName,
+                                                                senderDisplayName: userFoundResult[0].senderDisplayName,
+                                                                senderImageKey: userFoundResult[0].senderImageKey,
+                                                                imageTitle: mostSimilarImagePost.imageTitle,
+                                                                imageDescription: mostSimilarImagePost.imageDescription,
+                                                                upVotes: mostSimilarImagePost.imageUpVotes.length,
+                                                                downVotes: mostSimilarImagePost.imageDownVotes.length,
+                                                                datePosted: mostSimilarImagePost.datePosted 
+                                                            }
+                                                        })
+                                                    }
+                                                } else {
+                                                    mostSimilarImagePost = imagePostsFound[index]
+                                                    mostSimilarImagePostSimilarity = thisSimilarity
+                                                    itemsProcessed++;
+                                                    if (itemsProcessed == imagePostsFound.length) {
+                                                        res.json({
+                                                            status: "SUCCESS",
+                                                            message: "Found",
+                                                            data: {
+                                                                similarity: mostSimilarImagePostSimilarity,
+                                                                format: "Image",
+                                                                imageKey: mostSimilarImagePost.imageKey,
+                                                                senderName: userFoundResult[0].senderName,
+                                                                senderDisplayName: userFoundResult[0].senderDisplayName,
+                                                                senderImageKey: userFoundResult[0].senderImageKey,
+                                                                imageTitle: mostSimilarImagePost.imageTitle,
+                                                                imageDescription: mostSimilarImagePost.imageDescription,
+                                                                upVotes: mostSimilarImagePost.imageUpVotes.length,
+                                                                downVotes: mostSimilarImagePost.imageDownVotes.length,
+                                                                datePosted: mostSimilarImagePost.datePosted 
+                                                            }                                    
+                                                        })
+                                                    }
                                                 }
                                             } else {
                                                 mostSimilarImagePost = imagePostsFound[index]
@@ -231,105 +262,82 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
                                                             upVotes: mostSimilarImagePost.imageUpVotes.length,
                                                             downVotes: mostSimilarImagePost.imageDownVotes.length,
                                                             datePosted: mostSimilarImagePost.datePosted 
-                                                        }                                    
+                                                        }
                                                     })
                                                 }
                                             }
-                                        } else {
-                                            mostSimilarImagePost = imagePostsFound[index]
-                                            mostSimilarImagePostSimilarity = thisSimilarity
-                                            itemsProcessed++;
-                                            if (itemsProcessed == imagePostsFound.length) {
-                                                res.json({
-                                                    status: "SUCCESS",
-                                                    message: "Found",
-                                                    data: {
-                                                        similarity: mostSimilarImagePostSimilarity,
-                                                        format: "Image",
-                                                        imageKey: mostSimilarImagePost.imageKey,
-                                                        senderName: userFoundResult[0].senderName,
-                                                        senderDisplayName: userFoundResult[0].senderDisplayName,
-                                                        senderImageKey: userFoundResult[0].senderImageKey,
-                                                        imageTitle: mostSimilarImagePost.imageTitle,
-                                                        imageDescription: mostSimilarImagePost.imageDescription,
-                                                        upVotes: mostSimilarImagePost.imageUpVotes.length,
-                                                        downVotes: mostSimilarImagePost.imageDownVotes.length,
-                                                        datePosted: mostSimilarImagePost.datePosted 
-                                                    }
-                                                })
-                                            }
-                                        }
-                                    })
-                                } else {
-                                    res.json({
-                                        status: "FAILED",
-                                        message: "No image posts found with parameters passed."
-                                    })
-                                }
-                            }).catch(err => {
-                                console.log(err)
-                                res.json({
-                                    status: "FAILED",
-                                    message: "Error finding image post"
-                                })
-                            })
-                        } else {
-                            ImagePost.find({imageCreatorId: userFoundResult[0]._id}).then(imagePostsFound => {
-                                if (imagePostsFound.length) {
-                                    if (imagePostsFound.length == 1) {
-                                        res.json({
-                                            status: "SUCCESS",
-                                            message: "Found",
-                                            data: {
-                                                format: "Image",
-                                                imageKey: imagePostsFound[0].imageKey,
-                                                senderName: userFoundResult[0].senderName,
-                                                senderDisplayName: userFoundResult[0].senderDisplayName,
-                                                senderImageKey: userFoundResult[0].senderImageKey,
-                                                imageTitle: imagePostsFound[0].imageTitle,
-                                                imageDescription: imagePostsFound[0].imageDescription,
-                                                upVotes: imagePostsFound[0].imageUpVotes.length,
-                                                downVotes: imagePostsFound[0].imageDownVotes.length,
-                                                datePosted: imagePostsFound[0].datePosted 
-                                            }
                                         })
                                     } else {
-                                        //More than 1
-                                        sortSelectSend(imagePostsFound, "Image", userFoundResult[0].name, userFoundResult[0].displayName, userFoundResult[0].profileImageKey)
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "No image posts found with parameters passed."
+                                        })
                                     }
-                                } else {
+                                }).catch(err => {
+                                    console.log(err)
                                     res.json({
                                         status: "FAILED",
-                                        message: "No image posts from this user."
+                                        message: "Error finding image post"
                                     })
-                                }
+                                })
+                            } else {
+                                ImagePost.find({imageCreatorId: userFoundResult[0]._id}).then(imagePostsFound => {
+                                    if (imagePostsFound.length) {
+                                        if (imagePostsFound.length == 1) {
+                                            res.json({
+                                                status: "SUCCESS",
+                                                message: "Found",
+                                                data: {
+                                                    format: "Image",
+                                                    imageKey: imagePostsFound[0].imageKey,
+                                                    senderName: userFoundResult[0].senderName,
+                                                    senderDisplayName: userFoundResult[0].senderDisplayName,
+                                                    senderImageKey: userFoundResult[0].senderImageKey,
+                                                    imageTitle: imagePostsFound[0].imageTitle,
+                                                    imageDescription: imagePostsFound[0].imageDescription,
+                                                    upVotes: imagePostsFound[0].imageUpVotes.length,
+                                                    downVotes: imagePostsFound[0].imageDownVotes.length,
+                                                    datePosted: imagePostsFound[0].datePosted 
+                                                }
+                                            })
+                                        } else {
+                                            //More than 1
+                                            sortSelectSend(imagePostsFound, "Image", userFoundResult[0].name, userFoundResult[0].displayName, userFoundResult[0].profileImageKey)
+                                        }
+                                    } else {
+                                        res.json({
+                                            status: "FAILED",
+                                            message: "No image posts from this user."
+                                        })
+                                    }
+                                })
+                            }
+                        } else if (postformat == "Poll") {
+                            res.json({
+                                status: "FAILED",
+                                message: "I just made like image ones now lol noob"
+                            })
+                        } else if (postformat == "Thread") {
+                            res.json({
+                                status: "FAILED",
+                                message: "I just made like image ones now lol noob"
+                            })
+                        } else if (postformat == "Audio") {
+                            res.json({
+                                status: "FAILED",
+                                message: "I just made like image ones now lol noob"
+                            })
+                        } else if (postformat == "None") {
+                            res.json({
+                                status: "FAILED",
+                                message: "I just made like image ones now lol noob"
+                            })
+                        } else {
+                            res.json({
+                                status: "FAILED",
+                                message: "Invalid post format supplied"
                             })
                         }
-                    } else if (postformat == "Poll") {
-                        res.json({
-                            status: "FAILED",
-                            message: "I just made like image ones now lol noob"
-                        })
-                    } else if (postformat == "Thread") {
-                        res.json({
-                            status: "FAILED",
-                            message: "I just made like image ones now lol noob"
-                        })
-                    } else if (postformat == "Audio") {
-                        res.json({
-                            status: "FAILED",
-                            message: "I just made like image ones now lol noob"
-                        })
-                    } else if (postformat == "None") {
-                        res.json({
-                            status: "FAILED",
-                            message: "I just made like image ones now lol noob"
-                        })
-                    } else {
-                        res.json({
-                            status: "FAILED",
-                            message: "Invalid post format supplied"
-                        })
                     }
                 } else {
                     res.json({
