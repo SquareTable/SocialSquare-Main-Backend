@@ -42,7 +42,7 @@ router.get('/userAPI/:name', (req, res) => {
         name = name.trim();
 
         if (name == "") {
-            res.json({
+            res.status(400).json({
                 status: "FAILED",
                 message: "Empty name."
             })
@@ -58,18 +58,19 @@ router.get('/userAPI/:name', (req, res) => {
                             displayName: userFound[0].displayName,
                             followers: userFound[0].followers.length,
                             following: userFound[0].following.length,
-                            badges: userFound[0].badges
+                            badges: userFound[0].badges,
+                            privateAccount: userFound[0].privateAccount
                         }
                     })
                 } else {
-                    res.json({
+                    res.status(404).json({
                         status: "FAILED",
                         message: "No user found with that name."
                     })
                 }
             }).catch(err => {
                 console.log(err)
-                res.json({
+                res.status(500).json({
                     status: "FAILED",
                     message: "Error finding user, likely due to a bad name passed."
                 })
@@ -340,14 +341,14 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
                         }
                     }
                 } else {
-                    res.json({
+                    res.status(404).json({
                         status: "FAILED",
                         message: "Couldn't find a user with the name provided."
                     })
                 }
             }).catch(err => {
                 console.log(err)
-                res.json({
+                res.status(500).json({
                     status: "FAILED",
                     message: "Error checking for user, likely due to name passed."
                 })
@@ -355,7 +356,7 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
         }    
     } catch (err) {
         console.log(err);
-        res.json({
+        res.status(400).json({
             status: "FAILED",
             message: "An error occurred most likely due to paramaters passed!"
         })

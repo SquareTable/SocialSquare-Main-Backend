@@ -74,6 +74,12 @@
                     "400": {
                         "description": "Username or Post Name are empty or invalid."
                     },
+                    "404": {
+                        "description": "User with the specified username could not be found."
+                    },
+                    "500": {
+                        "description": "The server encountered an error processing the request. Check result.message for more details."
+                    },
                     "511": {
                         "description": "Authentication is required to access this resource as the account is private."
                     }
