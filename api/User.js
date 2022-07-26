@@ -299,8 +299,6 @@ router.post('/signin', (req, res) => {
                                             status: "SUCCESS",
                                             message: "Email",
                                             data: {email: blurEmailFunction(data[0].MFAEmail), fromAddress: process.env.SMTP_EMAIL, secondId: data[0].secondId},
-                                            //token: `Bearer ${token}`,
-                                            //refreshToken: `Bearer ${refreshToken}`
                                         })
                                     } else {
                                         console.log('Mail send error object: ' + error);
@@ -564,6 +562,20 @@ router.post('/checkverificationcode', (req, res) => {
                                         res.json({
                                             status: "SUCCESS",
                                             message: "Email is now a multi-factor authentication factor for your account."
+                                        })
+
+                                        var emailData = {
+                                            from: process.env.SMTP_EMAIL,
+                                            to: userFound[0].email,
+                                            subject: "Email Multi-Factor Authentication Turned On",
+                                            text: `Email Multi-Factor authentication has now been turned on for your account. If you did not request for this to happen, someone else may be logged into your account and you might not be able to get back in. Try changing your password and if you can't contact SocialSquare support.`,
+                                            html: `<p>Email Multi-Factor authentication has now been turned on for your account. If you did not request for this to happen, someone else may be logged into your account and you might not be able to get back in. Try changing your password and if you can't contact SocialSquare support.</p>`
+                                        };
+                    
+                                        mailTransporter.sendMail(emailData, function(error, response) {
+                                            if (error) {
+                                                console.error('An error occured while sending an email to user with ID: ' + userID)
+                                            }
                                         })
                                     }).catch(error => {
                                         console.log(error)

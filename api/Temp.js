@@ -6539,6 +6539,20 @@ router.post('/turnOffEmailMultiFactorAuthentication', (req, res) => {
                         status: "SUCCESS",
                         message: "Email multi-factor authentication has been turned off successfully."
                     })
+
+                    var emailData = {
+                        from: process.env.SMTP_EMAIL,
+                        to: userFound[0].email,
+                        subject: "Email Multi-Factor Authentication Turned Off",
+                        text: `Email Multi-Factor authentication has now been turned off for your account. If you did not request for this to happen, someone else may be logged into your account. If so, change your password immediately.`,
+                        html: `<p>Email Multi-Factor authentication has now been turned off for your account. If you did not request for this to happen, someone else may be logged into your account. If so, change your password immediately.</p>`
+                    };
+
+                    mailTransporter.sendMail(emailData, function(error, response) {
+                        if (error) {
+                            console.error('An error occured while sending an email to user with ID: ' + userID)
+                        }
+                    })
                 }).catch(error => {
                     console.log(error)
                     console.log("An error occured while setting MFAEmail to undefined for user with ID: " + userID)
