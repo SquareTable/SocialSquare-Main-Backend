@@ -1,0 +1,81 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "SocialSquare-Backend",
+        "description": "The backend API for SocialSquare. The private and secure social media platform that doesn't mine your data.",
+        "license": {
+            "name": "TO-BE-DECIDED",
+            "url": "example.com"
+        }
+    },
+    "host": "it-solutions.homedns.org:9443",
+    "basePath": "/",
+    "tags": [
+        {
+            "name": "Public APIs",
+            "description": "APIs made available to the public for use in applications other than SocialSquare."
+        }
+    ],
+    "schemes": ["http"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
+    "paths": {
+        "/publicApis/userAPI/{name}": {
+            "get": {
+                "tags": [
+                    "Public APIs"
+                ],
+                "summary": "Get publicly available user data.",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "The username of the user."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The server accepted the response and has successfully completed the request."
+                    },
+                    "400": {
+                        "description": "User with the specified username could not be found."
+                    }
+                }
+            }
+        },
+        "/publicApis/postAPI/{name}/{postname}/{postformat}": {
+            "get": {
+                "tags": [
+                    "Public APIs"
+                ],
+                "summary": "Get a list of posts from a specific user.",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "The username of the user."
+                    },
+                    {
+                        "name": "postname",
+                        "in": "path",
+                        "description": "The post title. If you want to get all posts and not just posts with a specific title, set this parameter to 'None'."
+                    },
+                    {
+                        "name": "postformat",
+                        "in": "path",
+                        "description": "The post format. Currently you can only get image posts from this API. The only option is 'Image'."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The server accepted the response and has successfully completed the request."
+                    },
+                    "400": {
+                        "description": "Username or Post Name are empty or invalid."
+                    }
+                }
+            }
+        }
+    }
+}

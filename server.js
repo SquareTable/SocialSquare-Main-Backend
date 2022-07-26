@@ -11,6 +11,9 @@ const MessagesRouter = require('./api/Messages')
 const PublicApisRouter = require('./api/PublicApis')
 const FeedRouter = require('./api/Feed')
 
+const swaggerUi = require('swagger-ui-express'); //For API docs
+const swaggerDocument = require('./swagger.json'); //For API docs
+
 require('dotenv').config();
 const fs = require('fs')
 const S3 = require('aws-sdk/clients/s3')
@@ -332,6 +335,7 @@ app.use('/conversations', ConversationsRouter)
 app.use('/messages', MessagesRouter)
 app.use('/publicApis', PublicApisRouter)
 app.use('/feed', FeedRouter)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument)); //For API docs
 
 const https = require('https');
 
