@@ -314,27 +314,27 @@ router.get('/postAPI/:name/:postname/:postformat', (req, res) => {
                                 })
                             }
                         } else if (postformat == "Poll") {
-                            res.status(503).json({
+                            res.status(501).json({
                                 status: "FAILED",
                                 message: "I just made like image ones now lol noob"
                             })
                         } else if (postformat == "Thread") {
-                            res.status(503).json({
+                            res.status(501).json({
                                 status: "FAILED",
                                 message: "I just made like image ones now lol noob"
                             })
                         } else if (postformat == "Audio") {
-                            res.status(503).json({
+                            res.status(501).json({
                                 status: "FAILED",
                                 message: "I just made like image ones now lol noob"
                             })
                         } else if (postformat == "None") {
-                            res.status(503).json({
+                            res.status(501).json({
                                 status: "FAILED",
                                 message: "I just made like image ones now lol noob"
                             })
                         } else {
-                            res.status(503).json({
+                            res.status(501).json({
                                 status: "FAILED",
                                 message: "Invalid post format supplied"
                             })

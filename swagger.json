@@ -86,7 +86,7 @@
                     "500": {
                         "description": "The server encountered an error processing the request. Check result.message for more details."
                     },
-                    "503": {
+                    "501": {
                         "description": "The option you have selected is coming soon."
                     },
                     "511": {
